@@ -40,8 +40,11 @@ async function run() {
     domain = 'localhost';
   }
 
-  const dbUrl = await askQuestion('👉 Qual a URL do banco PostgreSQL na VPS? (Aperte Enter para usar localhost:5432) ');
-  const redisUrl = await askQuestion('👉 Qual a URL do Redis na VPS? (Aperte Enter para usar localhost:6379) ');
+  const useDocker = await askQuestion('👉 Deseja subir o PostgreSQL e Redis isolados usando Docker agora? (S/N) ');
+  const isDocker = useDocker.trim().toLowerCase() === 's';
+
+  let dbUrl = '';
+  let redisUrl = '';
 
   const apiDomain = domain === 'localhost' ? 'localhost' : `api.${domain}`;
   
@@ -51,6 +54,33 @@ async function run() {
   
   console.log(`✅ API rodará na porta: ${apiPort}`);
   console.log(`✅ Web rodará na porta: ${webPort}`);
+
+  if (isDocker) {
+    const dbPort = await getFreePort(5432);
+    const redisPort = await getFreePort(6379);
+    console.log(`✅ Docker Postgres rodará na porta: ${dbPort}`);
+    console.log(`✅ Docker Redis rodará na porta: ${redisPort}`);
+    
+    // Configura as URLs para a API apontarem para as portas locais do Docker
+    dbUrl = `postgresql://brokercloud:brokercloud_dev_pass@localhost:${dbPort}/brokercloud`;
+    redisUrl = `redis://localhost:${redisPort}`;
+
+    // Escreve um .env na raiz para o docker-compose ler
+    fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${dbPort}\nREDIS_PORT=${redisPort}\n`);
+    
+    console.log('\n🐳 Subindo contêineres do Docker em background...');
+    try {
+      execSync('docker compose up -d', { cwd: __dirname, stdio: 'inherit' });
+      // Aguardar o banco subir
+      console.log('⏳ Aguardando 5 segundos para o banco iniciar completamente...');
+      execSync('sleep 5');
+    } catch (err) {
+      console.error('❌ Falha ao iniciar Docker. Tem certeza que o Docker/Docker Compose está instalado?');
+    }
+  } else {
+    dbUrl = await askQuestion('👉 Qual a URL do banco PostgreSQL na VPS? (Aperte Enter para ignorar) ');
+    redisUrl = await askQuestion('👉 Qual a URL do Redis na VPS? (Aperte Enter para ignorar) ');
+  }
 
   console.log('\n📝 Atualizando variáveis de ambiente (.env)...');
 
