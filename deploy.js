@@ -40,6 +40,9 @@ async function run() {
     domain = 'localhost';
   }
 
+  const dbUrl = await askQuestion('👉 Qual a URL do banco PostgreSQL na VPS? (Aperte Enter para usar localhost:5432) ');
+  const redisUrl = await askQuestion('👉 Qual a URL do Redis na VPS? (Aperte Enter para usar localhost:6379) ');
+
   const apiDomain = domain === 'localhost' ? 'localhost' : `api.${domain}`;
   
   console.log('\n🔍 Buscando portas disponíveis no servidor...');
@@ -65,6 +68,14 @@ async function run() {
   const frontendUrl = domain === 'localhost' ? `http://localhost:${webPort}` : `https://${domain}`;
   apiEnv = apiEnv.replace(/^FRONTEND_URL=.*$/m, `FRONTEND_URL="${frontendUrl}"`);
   if (!apiEnv.includes('FRONTEND_URL=')) apiEnv += `\nFRONTEND_URL="${frontendUrl}"`;
+
+  // Atualizar DB e Redis
+  if (dbUrl.trim() !== '') {
+    apiEnv = apiEnv.replace(/^DATABASE_URL=.*$/m, `DATABASE_URL="${dbUrl.trim()}"`);
+  }
+  if (redisUrl.trim() !== '') {
+    apiEnv = apiEnv.replace(/^REDIS_URL=.*$/m, `REDIS_URL="${redisUrl.trim()}"`);
+  }
 
   fs.writeFileSync(apiEnvPath, apiEnv);
 
@@ -151,6 +162,10 @@ module.exports = {
   console.log('\n🔨 Construindo o projeto (Build)... Pode demorar alguns minutos...');
   
   try {
+    console.log('➜ Preparando o Banco de Dados (Prisma)...');
+    execSync('npx prisma generate', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
+    execSync('npx prisma migrate deploy', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
+
     console.log('➜ Construindo API...');
     execSync('npm run build', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
     
