@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-br">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Painel Executivo | CRM Elite</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        body {
+            background-color: #0e1511;
+            color: #dde4dd;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: #1a211d;
+            border: 1px solid #3c4a42;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #3c4a42;
+            border-radius: 10px;
+        }
+    </style>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary-container": "#0566d9",
+                        "on-error": "#690005",
+                        "surface-container-high": "#242c27",
+                        "error-container": "#93000a",
+                        "secondary": "#adc6ff",
+                        "on-primary-fixed-variant": "#005236",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary": "#002e6a",
+                        "on-primary-container": "#00422b",
+                        "primary-fixed-dim": "#4edea3",
+                        "on-primary-fixed": "#002113",
+                        "tertiary-fixed": "#ffdad7",
+                        "primary": "#4edea3",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "inverse-surface": "#dde4dd",
+                        "surface": "#0e1511",
+                        "tertiary-container": "#fc7c78",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-container": "#e6ecff",
+                        "surface-container": "#1a211d",
+                        "on-surface": "#dde4dd",
+                        "on-tertiary-fixed-variant": "#842225",
+                        "surface-tint": "#4edea3",
+                        "on-background": "#dde4dd",
+                        "primary-container": "#10b981",
+                        "surface-bright": "#343b36",
+                        "secondary-fixed": "#d8e2ff",
+                        "surface-container-highest": "#2f3632",
+                        "on-tertiary-fixed": "#410005",
+                        "error": "#ffb4ab",
+                        "outline": "#86948a",
+                        "on-secondary-fixed": "#001a42",
+                        "surface-container-lowest": "#09100c",
+                        "surface-variant": "#2f3632",
+                        "surface-dim": "#0e1511",
+                        "inverse-primary": "#006c49",
+                        "tertiary": "#ffb3af",
+                        "on-primary": "#003824",
+                        "inverse-on-surface": "#2b322d",
+                        "on-tertiary": "#650911",
+                        "outline-variant": "#3c4a42",
+                        "on-surface-variant": "#bbcabf",
+                        "on-tertiary-container": "#711419",
+                        "primary-fixed": "#6ffbbe",
+                        "background": "#0e1511",
+                        "surface-container-low": "#161d19"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px",
+                        "unit": "8px",
+                        "container-padding": "24px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-xl": ["Manrope"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-xl": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+
+<body class="bg-surface-dim text-on-surface selection:bg-primary selection:text-on-primary">
+    <!-- SideNavBar Component (Reference: {{DATA:COMPONENTS:COMPONENTS_16}}) -->
+    <aside
+        class="h-screen w-64 fixed left-0 top-0 flex flex-col bg-surface-container-low border-r border-outline-variant z-50 py-unit">
+        <div class="mb-8 px-6">
+            <h1 class="font-headline-lg text-headline-lg font-bold text-primary">Propel CRM</h1>
+            <p class="font-label-md text-label-md text-on-surface-variant">Elite Real Estate AI</p>
+        </div>
+        <nav class="flex-1 px-4 space-y-1">
+            <a class="text-primary font-bold border-r-2 border-primary bg-surface-variant/10 flex items-center gap-3 py-2.5 px-4 rounded-l-md transition-all"
+                href="#">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                <span class="font-body-md">Dashboard</span>
+            </a>
+            <a class="text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors duration-200 flex items-center gap-3 py-2.5 px-4 rounded-md"
+                href="#">
+                <span class="material-symbols-outlined">group</span>
+                <span class="font-body-md">Leads</span>
+            </a>
+            <a class="text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors duration-200 flex items-center gap-3 py-2.5 px-4 rounded-md"
+                href="#">
+                <span class="material-symbols-outlined">chat_bubble</span>
+                <span class="font-body-md">Conversations</span>
+            </a>
+            <a class="text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors duration-200 flex items-center gap-3 py-2.5 px-4 rounded-md"
+                href="#">
+                <span class="material-symbols-outlined">home_work</span>
+                <span class="font-body-md">Properties</span>
+            </a>
+            <a class="text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors duration-200 flex items-center gap-3 py-2.5 px-4 rounded-md"
+                href="#">
+                <span class="material-symbols-outlined">analytics</span>
+                <span class="font-body-md">Insights</span>
+            </a>
+            <a class="text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors duration-200 flex items-center gap-3 py-2.5 px-4 rounded-md"
+                href="#">
+                <span class="material-symbols-outlined">settings</span>
+                <span class="font-body-md">Settings</span>
+            </a>
+        </nav>
+        <div class="px-4 mt-auto pb-4">
+            <button
+                class="w-full bg-primary text-on-primary font-label-md py-3 rounded-lg hover:brightness-110 active:opacity-80 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined">add</span>
+                New Listing
+            </button>
+        </div>
+    </aside>
+    <!-- TopAppBar Component (Reference: {{DATA:COMPONENTS:COMPONENTS_16}}) -->
+    <header
+        class="h-16 w-full sticky top-0 z-30 flex items-center justify-between px-margin-desktop bg-surface-dim border-b border-outline-variant ml-64 max-w-[calc(100%-16rem)]">
+        <div class="flex items-center gap-6 flex-1">
+            <div class="relative w-full max-w-md">
+                <span
+                    class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
+                <input
+                    class="bg-surface-container-low border-outline-variant rounded-full pl-10 pr-4 py-1.5 focus:ring-1 focus:ring-primary focus:border-primary transition-all text-on-surface w-full text-sm"
+                    placeholder="Pesquisar..." type="text" />
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full relative">
+                <span class="material-symbols-outlined">notifications</span>
+                <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border border-surface-dim"></span>
+            </button>
+            <button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full">
+                <span class="material-symbols-outlined">help_outline</span>
+            </button>
+            <div class="flex items-center gap-3 ml-2 pl-4 border-l border-outline-variant">
+                <div class="text-right">
+                    <p class="font-label-md text-label-md text-on-surface">Alex Rivera</p>
+                    <p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">Sênior Broker
+                    </p>
+                </div>
+                <img alt="Broker Profile Picture"
+                    class="w-9 h-9 rounded-full border border-outline-variant object-cover"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuChA0lUU2_PiyQndHNZMm_FaPsOCErtY2v0JLn68_vDSFz0TqczQxWKajR7xj-n4FaaK0401MuepfoRbxoPSSS9H9xEBHjJtttyKVA401BGapYJbTABOxGNfNN4RKkVqVGCaM7zLEh5n8T1JnPsNkis90UjpAKnBprDBMLngcaxrWGjVvlXTGDJJY-mt39_5ujfhVaJaBj3jUYGN-2itJ6-Ix-wJGq0nM4pkZco1CH0SHFbzQOuxlecpYcIM567m-hc_vbbf8YZMLfb" />
+            </div>
+        </div>
+    </header>
+    <main class="ml-64 p-6 min-h-[calc(100vh-64px)] space-y-6">
+        <!-- Top Metrics Row: High-Density KPIs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Vendas Totais
+                    </p>
+                    <h4 class="text-2xl font-bold text-primary">$4.25M</h4>
+                </div>
+                <div class="flex items-center gap-1 mt-2">
+                    <span class="material-symbols-outlined text-primary text-xs">trending_up</span>
+                    <span class="text-[11px] text-primary font-semibold">+12.4%</span>
+                    <span class="text-[11px] text-on-surface-variant ml-1">vs mês ant.</span>
+                </div>
+            </div>
+            <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Ticket Médio
+                    </p>
+                    <h4 class="text-2xl font-bold text-on-surface">$850k</h4>
+                </div>
+                <div class="flex items-center gap-1 mt-2">
+                    <span class="material-symbols-outlined text-error text-xs">trending_down</span>
+                    <span class="text-[11px] text-error font-semibold">-2.1%</span>
+                    <span class="text-[11px] text-on-surface-variant ml-1">vs mês ant.</span>
+                </div>
+            </div>
+            <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Taxa de
+                        Conversão</p>
+                    <h4 class="text-2xl font-bold text-on-surface">18.5%</h4>
+                </div>
+                <div class="flex items-center gap-1 mt-2">
+                    <span class="material-symbols-outlined text-primary text-xs">trending_up</span>
+                    <span class="text-[11px] text-primary font-semibold">+4.2%</span>
+                    <span class="text-[11px] text-on-surface-variant ml-1">vs mês ant.</span>
+                </div>
+            </div>
+            <div class="glass-card rounded-xl p-4 flex flex-col justify-between">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Comissões
+                        Estimadas</p>
+                    <h4 class="text-2xl font-bold text-secondary">$127k</h4>
+                </div>
+                <div class="flex items-center gap-1 mt-2">
+                    <span class="material-symbols-outlined text-primary text-xs">trending_up</span>
+                    <span class="text-[11px] text-primary font-semibold">+8.9%</span>
+                    <span class="text-[11px] text-on-surface-variant ml-1">vs mês ant.</span>
+                </div>
+            </div>
+            <div class="glass-card rounded-xl p-4 flex flex-col justify-between hidden xl:flex">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider mb-1">Leads Ativos
+                    </p>
+                    <h4 class="text-2xl font-bold text-on-surface">42</h4>
+                </div>
+                <div class="flex items-center gap-1 mt-2">
+                    <span class="material-symbols-outlined text-primary text-xs">trending_up</span>
+                    <span class="text-[11px] text-primary font-semibold">+15</span>
+                    <span class="text-[11px] text-on-surface-variant ml-1">novos</span>
+                </div>
+            </div>
+        </div>
+        <!-- Main Analytics Section -->
+        <div class="grid grid-cols-12 gap-6 items-stretch">
+            <!-- Refined Sales Performance Chart -->
+            <section class="col-span-12 lg:col-span-8 glass-card rounded-xl p-5 flex flex-col min-h-[400px]">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="font-headline-lg text-lg text-on-surface">Desempenho Geral de Vendas</h3>
+                        <p class="text-xs text-on-surface-variant uppercase tracking-widest font-medium">Vendas (Barras)
+                            vs Leads Gerados (Linha)</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button
+                            class="text-[10px] px-2 py-1 rounded bg-surface-container-highest border border-outline-variant text-on-surface">7D</button>
+                        <button class="text-[10px] px-2 py-1 rounded bg-primary text-on-primary">30D</button>
+                        <button
+                            class="text-[10px] px-2 py-1 rounded bg-surface-container-highest border border-outline-variant text-on-surface">1Y</button>
+                    </div>
+                </div>
+                <div class="flex-1 relative mt-4 flex items-end gap-2 group/chart">
+                    <!-- Overlay Line Chart Simulation (Leads) -->
+                    <svg class="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible"
+                        preserveaspectratio="none" viewbox="0 0 100 100">
+                        <path class="drop-shadow-sm opacity-60"
+                            d="M0,80 L12.5,70 L25,75 L37.5,50 L50,40 L62.5,60 L75,55 L87.5,30 L100,35" fill="none"
+                            stroke="#adc6ff" stroke-width="1.5"></path>
+                        <circle cx="50" cy="40" fill="#adc6ff" r="1.5"></circle>
+                    </svg>
+                    <!-- Background Grid -->
+                    <div class="absolute inset-0 flex flex-col justify-between opacity-10">
+                        <div class="border-t border-outline"></div>
+                        <div class="border-t border-outline"></div>
+                        <div class="border-t border-outline"></div>
+                        <div class="border-t border-outline"></div>
+                        <div class="border-t border-outline"></div>
+                    </div>
+                    <!-- Bars (Vendas) -->
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[45%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                        <div
+                            class="opacity-0 group-hover/bar:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-surface text-[10px] px-2 py-1 rounded-sm whitespace-nowrap z-20">
+                            R$ 210k</div>
+                    </div>
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[55%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                    </div>
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[35%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                    </div>
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[65%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                    </div>
+                    <div
+                        class="flex-1 bg-primary/80 h-[80%] rounded-t-sm relative shadow-[0_-2px_10px_rgba(78,222,163,0.2)]">
+                        <div
+                            class="absolute -top-10 left-1/2 -translate-x-1/2 bg-primary text-on-primary text-[10px] px-2 py-1 rounded-sm font-bold">
+                            MAI</div>
+                    </div>
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[50%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                    </div>
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[60%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                    </div>
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[75%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                    </div>
+                    <div
+                        class="flex-1 bg-surface-container-highest h-[40%] rounded-t-sm hover:bg-primary transition-colors cursor-pointer relative group/bar">
+                    </div>
+                </div>
+                <div class="flex justify-between mt-4 text-[10px] text-on-surface-variant font-semibold uppercase px-1">
+                    <span>Jan</span><span>Fev</span><span>Mar</span><span>Abr</span><span
+                        class="text-primary">Mai</span><span>Jun</span><span>Jul</span><span>Ago</span><span>Set</span>
+                </div>
+            </section>
+            <!-- Condesed Side Widgets Area -->
+            <div class="col-span-12 lg:col-span-4 flex flex-col gap-4">
+                <!-- Messages (Condensed) -->
+                <section class="glass-card rounded-xl p-4 flex flex-col flex-1 h-[190px]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-on-surface">Mensagens</h3>
+                        <span class="text-primary text-[10px] font-bold">4 NOVAS</span>
+                    </div>
+                    <div class="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-1">
+                        <div
+                            class="flex gap-2 items-center p-2 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer border-b border-outline-variant/20 last:border-0">
+                            <img class="w-8 h-8 rounded-full border border-outline-variant"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9_vU6M6z-m3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z-3_z" />
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between">
+                                    <p class="text-xs font-semibold truncate">Gabriel Santana</p>
+                                    <span class="text-[9px] text-on-surface-variant">2m</span>
+                                </div>
+                                <p class="text-[10px] text-on-surface-variant truncate">Gostaria de agendar a visita...
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex gap-2 items-center p-2 rounded-lg hover:bg-surface-container-highest transition-colors cursor-pointer border-b border-outline-variant/20 last:border-0">
+                            <img class="w-8 h-8 rounded-full border border-outline-variant"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ5QXZ8ULLUgsp5M7u7cdW6zAndyKu_iO3w9pKkdF3LkPxaAnMSbnXXXil7ozk0SYq54z3NbM9DD0wDj-icWFgmJf_JIvXMC_YgqkOBl-HPgi68oWEDxTuNX7a3agUKcCAEacRw4Sx51bW3ZuoiGfOvbXFx6EC7PdJ6YQvQUpbR4hRNorTPjfmgjH7ctK8eaNk8oNJh1QnpvXr0781ozrH40SqVUnVWb6PrtHGx9d9YLDdnXh5bYb5eW9U29ASU03spqmYvlSwwy-s" />
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between">
+                                    <p class="text-xs font-semibold truncate">Mariana Costa</p>
+                                    <span class="text-[9px] text-on-surface-variant">15m</span>
+                                </div>
+                                <p class="text-[10px] text-on-surface-variant truncate">Qual o valor do condomínio?</p>
+                            </div>
+                        </div>
+                    </div>
+                    <a class="block mt-2 text-center text-primary text-[10px] font-bold hover:underline" href="#">Ver
+                        todas</a>
+                </section>
+                <!-- Tasks (Condensed) -->
+                <section class="glass-card rounded-xl p-4 flex flex-col flex-1 h-[190px]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-on-surface">Tarefas</h3>
+                        <button class="text-primary text-[10px] font-bold hover:underline">Ver tudo</button>
+                    </div>
+                    <div class="space-y-3 flex-1">
+                        <div class="flex items-start gap-2 border-b border-outline-variant/20 pb-2 last:border-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5"></span>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="text-xs font-semibold text-on-surface truncate">Visita Família Smith</h4>
+                                <p class="text-[10px] text-on-surface-variant">Amanhã, 14:00 • <span
+                                        class="text-primary uppercase font-bold text-[9px]">Visita</span></p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2 border-b border-outline-variant/20 pb-2 last:border-0">
+                            <span class="w-1.5 h-1.5 rounded-full bg-error mt-1.5"></span>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="text-xs font-semibold text-on-surface truncate">Revisão de Contrato</h4>
+                                <p class="text-[10px] text-on-surface-variant">Hoje, 16:30 • <span
+                                        class="text-error uppercase font-bold text-[9px]">Urgente</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        class="mt-2 w-full bg-surface-container-highest border border-outline-variant text-on-surface text-[10px] font-bold py-2 rounded-lg hover:bg-surface-variant transition-all">
+                        + Nova Tarefa
+                    </button>
+                </section>
+            </div>
+        </div>
+        <!-- Enhanced Leads Summary (Robust Table) -->
+        <section class="glass-card rounded-xl p-5">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div>
+                    <h3 class="font-headline-lg text-lg text-on-surface">Resumo de Leads</h3>
+                    <p class="text-xs text-on-surface-variant font-medium">Gestão de pipeline e conversão</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-[10px] font-bold text-on-surface-variant uppercase mr-2">Filtros:</span>
+                    <button
+                        class="px-3 py-1 bg-primary text-on-primary rounded-full text-[10px] font-bold">Todos</button>
+                    <button
+                        class="px-3 py-1 bg-surface-container-highest border border-outline-variant text-on-surface rounded-full text-[10px] font-bold hover:border-primary">High
+                        Intent</button>
+                    <button
+                        class="px-3 py-1 bg-surface-container-highest border border-outline-variant text-on-surface rounded-full text-[10px] font-bold hover:border-primary">Novos</button>
+                    <button
+                        class="px-3 py-1 bg-surface-container-highest border border-outline-variant text-on-surface rounded-full text-[10px] font-bold hover:border-primary">Follow-up</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-outline-variant">
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2">
+                                Lead</th>
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2">
+                                Imóvel de Interesse</th>
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2">
+                                Budget</th>
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2 text-center">
+                                Score</th>
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2">
+                                Atividade</th>
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2">
+                                Origem</th>
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2">
+                                Status</th>
+                            <th
+                                class="pb-3 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider px-2 text-right">
+                                Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-variant/10">
+                        <tr class="group hover:bg-surface-container-highest transition-colors cursor-pointer">
+                            <td class="py-3 px-2">
+                                <div class="flex items-center gap-3">
+                                    <img class="w-8 h-8 rounded-full border border-outline-variant"
+                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ5QXZ8ULLUgsp5M7u7cdW6zAndyKu_iO3w9pKkdF3LkPxaAnMSbnXXXil7ozk0SYq54z3NbM9DD0wDj-icWFgmJf_JIvXMC_YgqkOBl-HPgi68oWEDxTuNX7a3agUKcCAEacRw4Sx51bW3ZuoiGfOvbXFx6EC7PdJ6YQvQUpbR4hRNorTPjfmgjH7ctK8eaNk8oNJh1QnpvXr0781ozrH40SqVUnVWb6PrtHGx9d9YLDdnXh5bYb5eW9U29ASU03spqmYvlSwwy-s" />
+                                    <div>
+                                        <p class="text-xs font-bold text-on-surface">Sarah Chen</p>
+                                        <p class="text-[9px] text-on-surface-variant">sarah.c@email.com</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 px-2">
+                                <p class="text-[11px] text-on-surface truncate max-w-[140px]">Ap. Luxo Centro</p>
+                            </td>
+                            <td class="py-3 px-2 font-bold text-[11px] text-primary">$500,000+</td>
+                            <td class="py-3 px-2 text-center">
+                                <span
+                                    class="px-1.5 py-0.5 bg-primary/10 text-primary text-[10px] rounded font-black">94</span>
+                            </td>
+                            <td class="py-3 px-2">
+                                <p class="text-[10px] text-on-surface-variant">Email aberto há 2h</p>
+                            </td>
+                            <td class="py-3 px-2">
+                                <span class="text-[10px] text-on-surface-variant">Instagram Ads</span>
+                            </td>
+                            <td class="py-3 px-2">
+                                <span
+                                    class="bg-secondary-container/20 text-secondary text-[9px] font-black uppercase px-2 py-0.5 rounded">Novo</span>
+                            </td>
+                            <td class="py-3 px-2 text-right">
+                                <button class="text-on-surface-variant hover:text-primary p-1"><span
+                                        class="material-symbols-outlined text-sm">more_vert</span></button>
+                            </td>
+                        </tr>
+                        <tr class="group hover:bg-surface-container-highest transition-colors cursor-pointer">
+                            <td class="py-3 px-2">
+                                <div class="flex items-center gap-3">
+                                    <img class="w-8 h-8 rounded-full border border-outline-variant"
+                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWD67SfkQd2akSPe2qQBMl0pA-SLnolonvOhBII4MXyGaoNeHY9LW9-tG5ZAUv4wqyxd2u9o4h6TILVlsAALLvK4qu-BjyR9Zu6JCAHV37x0MsC8F31AJMcaBNXLuLckRXFxgd0Lbiihie9cJuvF4pjc_4ZGW0zSUuLzIqh0F5Af1GNvbhbJLf5mZwONwknEkq9VFcGdft_a_kzqjk3VHoNKTScr92SLMcpLu323VZ7M4uu--eCDx9CAQyW8R6PjUNEX6AfKab6u3A" />
+                                    <div>
+                                        <p class="text-xs font-bold text-on-surface">David Miller</p>
+                                        <p class="text-[9px] text-on-surface-variant">d.miller@gmail.com</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 px-2">
+                                <p class="text-[11px] text-on-surface truncate max-w-[140px]">Casa Unifamiliar</p>
+                            </td>
+                            <td class="py-3 px-2 font-bold text-[11px] text-primary">$1,200,000</td>
+                            <td class="py-3 px-2 text-center">
+                                <span
+                                    class="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-500 text-[10px] rounded font-black">72</span>
+                            </td>
+                            <td class="py-3 px-2">
+                                <p class="text-[10px] text-on-surface-variant">Visita agendada</p>
+                            </td>
+                            <td class="py-3 px-2">
+                                <span class="text-[10px] text-on-surface-variant">Indicação</span>
+                            </td>
+                            <td class="py-3 px-2">
+                                <span
+                                    class="bg-surface-container-highest text-on-surface-variant text-[9px] font-black uppercase px-2 py-0.5 rounded">Contatado</span>
+                            </td>
+                            <td class="py-3 px-2 text-right">
+                                <button class="text-on-surface-variant hover:text-primary p-1"><span
+                                        class="material-symbols-outlined text-sm">more_vert</span></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 pt-4 border-t border-outline-variant/10 flex justify-between items-center">
+                <span class="text-[10px] text-on-surface-variant">Exibindo 12 de 42 leads ativos</span>
+                <div class="flex gap-4">
+                    <button class="text-primary text-[10px] font-bold hover:underline">Exportar CSV</button>
+                    <button class="text-primary text-[10px] font-bold hover:underline">Ver Funil Completo</button>
+                </div>
+            </div>
+        </section>
+    </main>
+    <!-- Contextual FAB (Dashboard relevant) -->
+    <button
+        class="fixed bottom-8 right-8 bg-primary text-on-primary w-12 h-12 rounded-full shadow-[0_8px_20px_rgba(78,222,163,0.3)] flex items-center justify-center group active:scale-90 transition-transform z-[60]">
+        <span class="material-symbols-outlined text-2xl group-hover:rotate-90 transition-transform">add</span>
+    </button>
+    <script>
+        // Simple bar chart interaction
+        document.querySelectorAll('.group\\/bar').forEach(bar => {
+            bar.addEventListener('mouseenter', () => {
+                bar.classList.add('brightness-110');
+            });
+            bar.addEventListener('mouseleave', () => {
+                bar.classList.remove('brightness-110');
+            });
+        });
+
+        // Nav active state simulation
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                document.querySelectorAll('nav a').forEach(l => {
+                    l.classList.remove('text-primary', 'font-bold', 'border-r-2', 'border-primary', 'bg-surface-variant/10');
+                    l.classList.add('text-on-surface-variant', 'font-medium');
+                });
+                link.classList.add('text-primary', 'font-bold', 'border-r-2', 'border-primary', 'bg-surface-variant/10');
+                link.classList.remove('text-on-surface-variant', 'font-medium');
+            });
+        });
+    </script>
+</body>
+
+</html>

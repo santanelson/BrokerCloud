@@ -1,0 +1,304 @@
+// This is your Prisma schema file for BrokerCloud CRM
+// Multi-tenant SaaS — each table has tenantId for isolation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Plan {
+  starter
+  pro
+  enterprise
+}
+
+enum UserRole {
+  admin
+  manager
+  broker
+}
+
+enum LeadStatus {
+  novo
+  em_atendimento
+  qualificado
+  proposta
+  fechado
+  perdido
+}
+
+enum LeadSource {
+  facebook_ads
+  google_ads
+  instagram
+  whatsapp
+  indicacao
+  portal_imoveis
+  site
+  direto
+  outro
+}
+
+enum PropertyType {
+  apartamento
+  casa
+  terreno
+  comercial
+  rural
+  outro
+}
+
+enum PropertyStatus {
+  disponivel
+  reservado
+  vendido
+  alugado
+  inativo
+}
+
+enum TaskType {
+  visita
+  ligacao
+  email
+  proposta
+  reuniao
+  outro
+}
+
+enum TaskPriority {
+  baixa
+  media
+  alta
+  urgente
+}
+
+enum MessageDirection {
+  in
+  out
+}
+
+enum MessageType {
+  text
+  image
+  audio
+  video
+  document
+  sticker
+}
+
+enum MessageStatus {
+  sent
+  delivered
+  read
+  failed
+}
+
+// ─── Tenant (Imobiliária) ─────────────────────────────────────────────────────
+
+model Tenant {
+  id                  String   @id @default(cuid())
+  name                String
+  slug                String   @unique
+  plan                Plan     @default(starter)
+  logoUrl             String?
+  whatsappInstanceUrl String?
+  evolutionApiKey     String?
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  users         User[]
+  leads         Lead[]
+  properties    Property[]
+  tasks         Task[]
+  conversations Conversation[]
+
+  @@map("tenants")
+}
+
+// ─── User (Corretor/Gestor) ───────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String
+  name         String
+  email        String
+  passwordHash String
+  role         UserRole  @default(broker)
+  avatarUrl    String?
+  phone        String?
+  active       Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+  assignedLeads Lead[]         @relation("AssignedBroker")
+  properties    Property[]
+  tasks         Task[]
+  conversations Conversation[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Lead ─────────────────────────────────────────────────────────────────────
+
+model Lead {
+  id               String      @id @default(cuid())
+  tenantId         String
+  assignedBrokerId String?
+  name             String
+  email            String?
+  phone            String
+  status           LeadStatus  @default(novo)
+  source           LeadSource  @default(outro)
+  score            Int         @default(0) // 0-100
+  budget           Float?
+  interestType     PropertyType?
+  interestLocation String?
+  notes            String?
+  tags             String[]
+  lastContactAt    DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  broker   User?   @relation("AssignedBroker", fields: [assignedBrokerId], references: [id])
+  tasks    Task[]
+  conversations Conversation[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, assignedBrokerId])
+  @@map("leads")
+}
+
+// ─── Property (Imóvel) ────────────────────────────────────────────────────────
+
+model Property {
+  id           String         @id @default(cuid())
+  tenantId     String
+  brokerId     String?
+  title        String
+  description  String?
+  type         PropertyType
+  status       PropertyStatus @default(disponivel)
+  price        Float
+  area         Float?
+  bedrooms     Int?
+  bathrooms    Int?
+  parkingSpots Int?
+  address      String
+  neighborhood String?
+  city         String
+  state        String
+  zipCode      String?
+  lat          Float?
+  lng          Float?
+  images       String[]
+  features     String[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  broker User?  @relation(fields: [brokerId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@map("properties")
+}
+
+// ─── Task (Tarefa/Atividade) ──────────────────────────────────────────────────
+
+model Task {
+  id          String       @id @default(cuid())
+  tenantId    String
+  leadId      String?
+  brokerId    String
+  title       String
+  description String?
+  type        TaskType     @default(outro)
+  priority    TaskPriority @default(media)
+  dueAt       DateTime
+  done        Boolean      @default(false)
+  doneAt      DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead   Lead?  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  broker User   @relation(fields: [brokerId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, brokerId])
+  @@index([tenantId, dueAt])
+  @@map("tasks")
+}
+
+// ─── WhatsApp Conversation ────────────────────────────────────────────────────
+
+model Conversation {
+  id               String   @id @default(cuid())
+  tenantId         String
+  leadId           String?
+  assignedBrokerId String?
+  whatsappJid      String
+  unreadCount      Int      @default(0)
+  isArchived       Boolean  @default(false)
+  lastMessageAt    DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  broker   User?     @relation(fields: [assignedBrokerId], references: [id])
+  messages Message[]
+
+  @@unique([tenantId, whatsappJid])
+  @@index([tenantId])
+  @@index([tenantId, assignedBrokerId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String
+  direction      MessageDirection
+  type           MessageType      @default(text)
+  content        String
+  mediaUrl       String?
+  fileName       String?
+  status         MessageStatus    @default(sent)
+  sentAt         DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([conversationId, sentAt])
+  @@map("messages")
+}

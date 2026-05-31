@@ -1,0 +1,29 @@
+# Node
+node_modules/
+dist/
+.next/
+.turbo/
+
+# Env
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes (if locally mounted)
+postgres_data/
+redis_data/
+
+# Uploads temp
+uploads/
