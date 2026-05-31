@@ -1,29 +1,32 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { getUser } from '../middleware/authenticate'
-import { getPresignedUrlToR2 } from '../lib/storage'
+import { uploadFileToR2 } from '../lib/storage'
 
 export async function uploadRoutes(app: FastifyInstance) {
   app.addHook('preHandler', app.authenticate)
 
   app.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(request)
-    const { filename, contentType } = request.body as { filename: string; contentType: string }
-
-    if (!filename || !contentType) {
-      return reply.code(400).send({ error: 'Filename e contentType são obrigatórios.' })
+    
+    // O @fastify/multipart expõe `request.file()` para lidar com stream
+    const data = await request.file()
+    
+    if (!data) {
+      return reply.code(400).send({ error: 'Nenhum arquivo enviado.' })
     }
 
-    // Gerar um nome único
-    const ext = filename.split('.').pop()
+    // Gerar um nome único baseado no tenant, timestamp e nome original
+    const ext = data.filename.split('.').pop()
     const uniqueName = `${user.tenantId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
 
     try {
-      const { uploadUrl, publicUrl } = await getPresignedUrlToR2(uniqueName, contentType)
+      const buffer = await data.toBuffer()
+      const publicUrl = await uploadFileToR2(buffer, uniqueName, data.mimetype)
 
-      return reply.code(201).send({ uploadUrl, publicUrl })
+      return reply.code(201).send({ url: publicUrl })
     } catch (error) {
       app.log.error(error)
-      return reply.code(500).send({ error: 'Erro ao gerar URL de upload.' })
+      return reply.code(500).send({ error: 'Erro ao fazer upload da imagem.' })
     }
   })
 }

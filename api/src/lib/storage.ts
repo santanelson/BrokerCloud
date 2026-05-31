@@ -1,5 +1,4 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 export const s3 = new S3Client({
   region: 'auto',
@@ -11,22 +10,22 @@ export const s3 = new S3Client({
   forcePathStyle: true,
 })
 
-export async function getPresignedUrlToR2(
+export async function uploadFileToR2(
+  fileBuffer: Buffer,
   fileName: string,
   contentType: string
-): Promise<{ uploadUrl: string; publicUrl: string }> {
+): Promise<string> {
   const bucketName = process.env.R2_BUCKET_NAME!
-  const publicUrlBase = process.env.R2_PUBLIC_URL!
+  const publicUrl = process.env.R2_PUBLIC_URL!
 
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: fileName,
-    ContentType: contentType,
-  })
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: bucketName,
+      Key: fileName,
+      Body: fileBuffer,
+      ContentType: contentType,
+    })
+  )
 
-  // URL válida por 15 minutos
-  const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 900 })
-  const publicUrl = `${publicUrlBase.replace(/\/$/, '')}/${fileName}`
-
-  return { uploadUrl, publicUrl }
+  return `${publicUrl.replace(/\/$/, '')}/${fileName}`
 }

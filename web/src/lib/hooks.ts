@@ -113,26 +113,13 @@ export function useDeleteProperty() {
 export function useUploadImage() {
   return useMutation({
     mutationFn: async (file: File) => {
-      // 1. Get presigned URL
-      const res = await api.post<{ uploadUrl: string; publicUrl: string }>('/upload', {
-        filename: file.name,
-        contentType: file.type,
+      const formData = new FormData()
+      formData.append('file', file)
+      // fetch options directly to api.fetch bypassing JSON stringification
+      return api.fetch<{ url: string }>('/upload', {
+        method: 'POST',
+        body: formData,
       })
-
-      // 2. Upload directly to Cloudflare R2 bypassing backend network
-      const uploadRes = await fetch(res.uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      })
-
-      if (!uploadRes.ok) {
-        throw new Error('Falha ao fazer upload da imagem.')
-      }
-
-      return { url: res.publicUrl }
     },
   })
 }
