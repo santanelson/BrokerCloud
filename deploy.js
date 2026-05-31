@@ -86,9 +86,14 @@ async function run() {
 
   // Atualizar API .env
   const apiEnvPath = path.join(__dirname, 'api', '.env');
+  const apiEnvExamplePath = path.join(__dirname, 'api', '.env.example');
   let apiEnv = '';
+  
   if (fs.existsSync(apiEnvPath)) {
     apiEnv = fs.readFileSync(apiEnvPath, 'utf8');
+  } else if (fs.existsSync(apiEnvExamplePath)) {
+    apiEnv = fs.readFileSync(apiEnvExamplePath, 'utf8');
+    console.log('➜ Criado api/.env a partir do .env.example');
   }
   
   // Atualizar PORT, FRONTEND_URL na API
@@ -102,9 +107,11 @@ async function run() {
   // Atualizar DB e Redis
   if (dbUrl.trim() !== '') {
     apiEnv = apiEnv.replace(/^DATABASE_URL=.*$/m, `DATABASE_URL="${dbUrl.trim()}"`);
+    if (!apiEnv.includes('DATABASE_URL=')) apiEnv += `\nDATABASE_URL="${dbUrl.trim()}"`;
   }
   if (redisUrl.trim() !== '') {
     apiEnv = apiEnv.replace(/^REDIS_URL=.*$/m, `REDIS_URL="${redisUrl.trim()}"`);
+    if (!apiEnv.includes('REDIS_URL=')) apiEnv += `\nREDIS_URL="${redisUrl.trim()}"`;
   }
 
   fs.writeFileSync(apiEnvPath, apiEnv);
