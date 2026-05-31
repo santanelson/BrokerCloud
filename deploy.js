@@ -140,6 +140,7 @@ async function run() {
 server {
     listen 80;
     server_name ${apiDomain};
+    client_max_body_size 50M;
 
     location / {
         proxy_pass http://localhost:${apiPort};
@@ -154,6 +155,7 @@ server {
 server {
     listen 80;
     server_name ${domain} www.${domain};
+    client_max_body_size 50M;
 
     location / {
         proxy_pass http://localhost:${webPort};
