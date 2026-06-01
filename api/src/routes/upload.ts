@@ -30,7 +30,7 @@ export async function uploadRoutes(app: FastifyInstance) {
 
     try {
       const { uploadUrl, publicUrl } = await generatePresignedUploadUrl(key, contentType)
-      app.log.info({ key, user: user.id }, 'Gerada presigned URL para upload')
+      app.log.info({ key, user: user.sub }, 'Gerada presigned URL para upload')
       return reply.code(200).send({ uploadUrl, publicUrl, key })
     } catch (error: any) {
       app.log.error({ err: error }, 'Erro ao gerar URL presigned para o R2')
@@ -48,7 +48,7 @@ export async function uploadRoutes(app: FastifyInstance) {
       contentType: string
     }
 
-    app.log.info({ key, url, user: user.id, size }, 'Upload confirmado pelo frontend via R2')
+    app.log.info({ key, url, user: user.sub, size }, 'Upload confirmado pelo frontend via R2')
     // No futuro, podemos salvar os metadados no Postgres aqui
     return reply.code(200).send({ success: true, url })
   })
