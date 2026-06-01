@@ -1,32 +1,33 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { getUser } from '../middleware/authenticate'
-import { uploadFileToR2 } from '../lib/storage'
+import { generatePresignedUploadUrl } from '../lib/storage'
 
 export async function uploadRoutes(app: FastifyInstance) {
   app.addHook('preHandler', app.authenticate)
 
+  // POST /upload — retorna { uploadUrl, publicUrl }
+  // O frontend faz PUT direto na uploadUrl com o arquivo
   app.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(request)
-    
-    // O @fastify/multipart expõe `request.file()` para lidar com stream
-    const data = await request.file()
-    
-    if (!data) {
-      return reply.code(400).send({ error: 'Nenhum arquivo enviado.' })
+    const { filename, contentType } = request.body as {
+      filename: string
+      contentType: string
     }
 
-    // Gerar um nome único baseado no tenant, timestamp e nome original
-    const ext = data.filename.split('.').pop()
-    const uniqueName = `${user.tenantId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
+    if (!filename || !contentType) {
+      return reply.code(400).send({ error: 'filename e contentType são obrigatórios.' })
+    }
+
+    // Gerar nome único: tenantId/timestamp-random.ext
+    const ext = filename.split('.').pop() || 'bin'
+    const key = `${user.tenantId}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`
 
     try {
-      const buffer = await data.toBuffer()
-      const publicUrl = await uploadFileToR2(buffer, uniqueName, data.mimetype)
-
-      return reply.code(201).send({ url: publicUrl })
+      const { uploadUrl, publicUrl } = await generatePresignedUploadUrl(key, contentType)
+      return reply.code(200).send({ uploadUrl, publicUrl })
     } catch (error) {
       app.log.error(error)
-      return reply.code(500).send({ error: 'Erro ao fazer upload da imagem.' })
+      return reply.code(500).send({ error: 'Erro ao gerar URL de upload.' })
     }
   })
 }
