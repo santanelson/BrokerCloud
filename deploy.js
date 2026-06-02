@@ -183,9 +183,9 @@ async function run() {
       - "\${EVO_PORT:-8080}:8080"
     environment:
       - SERVER_PORT=8080
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=${dbUri}
-      - REDIS_URI=${rdsUri}
+      - POSTGRES_AUTH_DB=${dbUri}?sslmode=disable
+      - POSTGRES_USERS_DB=${dbUri}?sslmode=disable
+      - DATABASE_SAVE_MESSAGES=false
       - GLOBAL_API_KEY=${evolutionKey}
       - WEBHOOK_GLOBAL_URL=${apiUrlWebhook}/webhook/evolution
       - WEBHOOK_GLOBAL_ENABLED=true
