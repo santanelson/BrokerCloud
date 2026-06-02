@@ -202,12 +202,11 @@ async function run() {
       }
     }
 
-    if (isDocker || isEvolutionDocker) {
-      composeContent += `volumes:\n`;
-      if (isDocker) composeContent += `  postgres_data:\n  redis_data:\n`;
-      fs.writeFileSync(path.join(__dirname, 'docker-compose.yml'), composeContent);
-      console.log('✅ docker-compose.yml atualizado com sucesso!');
+    if (isDocker) {
+      composeContent += `volumes:\n  postgres_data:\n  redis_data:\n`;
     }
+    fs.writeFileSync(path.join(__dirname, 'docker-compose.yml'), composeContent);
+    console.log('✅ docker-compose.yml atualizado com sucesso!');
   }
 
   // Se escolheu Docker, tem que subir agora (o compose atualizado)
