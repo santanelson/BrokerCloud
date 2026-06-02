@@ -59,7 +59,7 @@ async function run() {
   // ─── 2. Infraestrutura (Docker / Manual) ──────────────────────────────────────
   console.log('\n📌 ETAPA 2/5 — INFRAESTRUTURA (Banco de Dados & Redis)\n');
   const useDocker = await askQuestion('👉 Deseja subir o PostgreSQL e Redis isolados usando Docker agora? (S/N) ');
-  const isDocker = useDocker.trim().toLowerCase() === 's';
+  const isDocker = ['s', 'sim', 'y', 'yes'].includes(useDocker.trim().toLowerCase());
 
   let dbUrl = '';
   let redisUrl = '';
@@ -109,7 +109,7 @@ async function run() {
   // ─── 5. Evolution Go (WhatsApp) ────────────────────────────────────────────────
   console.log('\n📌 ETAPA 5/5 — WHATSAPP (Evolution Go)\n');
   const useEvolution = await askQuestion('👉 Deseja instalar o Evolution Go junto via Docker? (S/N) ');
-  const isEvolutionDocker = useEvolution.trim().toLowerCase() === 's';
+  const isEvolutionDocker = ['s', 'sim', 'y', 'yes'].includes(useEvolution.trim().toLowerCase());
   
   let evolutionDomain = '';
   let evolutionUrl = '';
@@ -212,7 +212,7 @@ async function run() {
   // Se escolheu Docker, tem que subir agora (o compose atualizado)
   if (isDocker || isEvolutionDocker) {
     console.log('\n🐳 Subindo contêineres do Docker em background...');
-    fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${isDocker ? dbUrl.split(':')[2].split('/')[0] : 5432}\nREDIS_PORT=${isDocker ? redisUrl.split(':')[2] : 6379}\nEVO_PORT=${evoPort}\n`);
+    fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${isDocker ? dbUrl.split(':')[3].split('/')[0] : 5432}\nREDIS_PORT=${isDocker ? redisUrl.split(':')[2] : 6379}\nEVO_PORT=${evoPort}\n`);
     try {
       execSync('docker compose up -d', { cwd: __dirname, stdio: 'inherit' });
       console.log('⏳ Aguardando 5 segundos para inicialização...');
