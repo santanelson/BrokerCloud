@@ -165,9 +165,9 @@ async function run() {
   const webEnvPath = path.join(__dirname, 'web', '.env.local');
   const apiUrl = domain === 'localhost' ? `http://localhost:${apiPort}` : `https://${apiDomain}`;
   
-  let webEnv = \`NEXT_PUBLIC_API_URL=\${apiUrl}\n\`;
-  if (supabaseUrl.trim()) webEnv += \`NEXT_PUBLIC_SUPABASE_URL=\${supabaseUrl.trim()}\n\`;
-  if (supabaseAnonKey.trim()) webEnv += \`NEXT_PUBLIC_SUPABASE_ANON_KEY=\${supabaseAnonKey.trim()}\n\`;
+  let webEnv = `NEXT_PUBLIC_API_URL=${apiUrl}\n`;
+  if (supabaseUrl.trim()) webEnv += `NEXT_PUBLIC_SUPABASE_URL=${supabaseUrl.trim()}\n`;
+  if (supabaseAnonKey.trim()) webEnv += `NEXT_PUBLIC_SUPABASE_ANON_KEY=${supabaseAnonKey.trim()}\n`;
   
   fs.writeFileSync(webEnvPath, webEnv);
 
