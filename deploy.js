@@ -374,12 +374,18 @@ module.exports = {
   console.log('\n🔨 Construindo o projeto (Build)... Pode demorar alguns minutos...');
 
   try {
+    console.log('➜ Instalando dependências da API...');
+    execSync('npm install', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
+
     console.log('➜ Preparando o Banco de Dados (Prisma)...');
     execSync('npx prisma generate', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
     execSync('npx prisma migrate deploy', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
 
     console.log('➜ Construindo API...');
     execSync('npm run build', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
+
+    console.log('➜ Instalando dependências do Web...');
+    execSync('npm install', { cwd: path.join(__dirname, 'web'), stdio: 'inherit' });
 
     console.log('➜ Construindo Web (Next.js)...');
     execSync('npm run build', { cwd: path.join(__dirname, 'web'), stdio: 'inherit' });
