@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import imageCompression from 'browser-image-compression'
+import { supabase } from './supabase'
 import type {
   Lead, Property, Task, Conversation, Message,
   PaginatedResponse,
@@ -113,37 +115,39 @@ export function useDeleteProperty() {
 export function useUploadImage() {
   return useMutation({
     mutationFn: async (file: File) => {
-      // 1. Solicita a URL assinada ao backend
-      const { uploadUrl, publicUrl, key } = await api.post<{
-        uploadUrl: string
-        publicUrl: string
-        key: string
-      }>('/upload/presign', {
-        filename: file.name,
-        contentType: file.type,
-        size: file.size,
-      })
-
-      // 2. Faz o upload diretamente do navegador para a Cloudflare R2
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
-      })
-
-      if (!uploadRes.ok) {
-        throw new Error(`Falha no upload para o Cloudflare R2: ${uploadRes.status} ${uploadRes.statusText}`)
+      // 1. Otimizar e comprimir a imagem para WebP no Frontend
+      const options = {
+        maxSizeMB: 1, // Tamanho máximo de 1MB
+        maxWidthOrHeight: 1920, // Resolução máxima Full HD
+        useWebWorker: true,
+        fileType: 'image/webp' as string, // Forçar conversão para WebP
       }
 
-      // 3. Confirma o upload bem-sucedido com o backend
-      await api.post('/upload/confirm', {
-        key,
-        url: publicUrl,
-        size: file.size,
-        contentType: file.type,
-      })
+      const compressedFile = await imageCompression(file, options)
+      
+      // Criar um nome único para o arquivo
+      const tenantRes = await api.get('/tenants/me')
+      const tenantId = tenantRes.id || 'default'
+      const fileName = `${tenantId}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.webp`
 
-      return { url: publicUrl }
+      // 2. Fazer o upload diretamente do navegador para o Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('broker') // O nome do seu bucket no Supabase
+        .upload(fileName, compressedFile, {
+          contentType: 'image/webp',
+          upsert: false,
+        })
+
+      if (error) {
+        throw new Error(`Falha no upload para o Supabase: ${error.message}`)
+      }
+
+      // 3. Pegar a URL pública do arquivo recém-enviado
+      const { data: publicUrlData } = supabase.storage
+        .from('broker')
+        .getPublicUrl(data.path)
+
+      return { url: publicUrlData.publicUrl }
     },
   })
 }

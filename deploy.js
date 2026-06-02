@@ -101,13 +101,10 @@ async function run() {
   const jwtRefreshSecret = crypto.randomBytes(32).toString('hex');
   console.log('✅ Chaves JWT geradas automaticamente (64 caracteres cada).');
 
-  // ─── 4. Cloudflare R2 (Upload de Imagens) ─────────────────────────────────────
-  console.log('\n📌 ETAPA 4/5 — CLOUDFLARE R2 (Upload de Imagens)\n');
-  const r2AccountId = await askQuestion('👉 R2 Account ID (visível na URL do painel Cloudflare): ');
-  const r2AccessKey = await askQuestion('👉 R2 Access Key ID: ');
-  const r2SecretKey = await askQuestion('👉 R2 Secret Access Key: ');
-  const r2Bucket = await askQuestion('👉 Nome do Bucket (ex: broker): ');
-  const r2PublicUrl = await askQuestion('👉 URL pública do Bucket (ex: https://pub-xxx.r2.dev): ');
+  // ─── 4. Supabase Storage (Upload de Imagens) ──────────────────────────────────
+  console.log('\n📌 ETAPA 4/5 — SUPABASE STORAGE (Otimização WebP)\n');
+  const supabaseUrl = await askQuestion('👉 Supabase URL (ex: https://[ref].supabase.co): ');
+  const supabaseAnonKey = await askQuestion('👉 Supabase Anon Key: ');
 
   // ─── 5. Evolution API (WhatsApp) — Opcional ───────────────────────────────────
   console.log('\n📌 ETAPA 5/5 — WHATSAPP (Evolution API) — Opcional\n');
@@ -152,12 +149,11 @@ async function run() {
   apiEnv = setEnvVar(apiEnv, 'JWT_REFRESH_SECRET', jwtRefreshSecret);
   apiEnv = setEnvVar(apiEnv, 'JWT_REFRESH_EXPIRES_IN', '7d');
 
-  // Cloudflare R2
-  if (r2AccountId.trim()) apiEnv = setEnvVar(apiEnv, 'R2_ACCOUNT_ID', r2AccountId.trim());
-  if (r2AccessKey.trim()) apiEnv = setEnvVar(apiEnv, 'R2_ACCESS_KEY_ID', r2AccessKey.trim());
-  if (r2SecretKey.trim()) apiEnv = setEnvVar(apiEnv, 'R2_SECRET_ACCESS_KEY', r2SecretKey.trim());
-  if (r2Bucket.trim()) apiEnv = setEnvVar(apiEnv, 'R2_BUCKET_NAME', r2Bucket.trim());
-  if (r2PublicUrl.trim()) apiEnv = setEnvVar(apiEnv, 'R2_PUBLIC_URL', r2PublicUrl.trim());
+  // Supabase (Backend não usa mais, mas podemos deixar guardado se necessário)
+  // if (supabaseUrl.trim()) apiEnv = setEnvVar(apiEnv, 'SUPABASE_URL', supabaseUrl.trim());
+  
+  // Limpar R2 antigo
+  apiEnv = apiEnv.replace(/^R2_.*$/gm, '');
 
   // Evolution API
   apiEnv = setEnvVar(apiEnv, 'EVOLUTION_API_URL', evolutionUrl.trim() || 'https://sua-instancia-evolution.com');
@@ -168,7 +164,14 @@ async function run() {
   // ─── Montar o .env.local do Web ──────────────────────────────────────────────
   const webEnvPath = path.join(__dirname, 'web', '.env.local');
   const apiUrl = domain === 'localhost' ? `http://localhost:${apiPort}` : `https://${apiDomain}`;
-  fs.writeFileSync(webEnvPath, `NEXT_PUBLIC_API_URL=${apiUrl}\n`);
+  
+  let webEnv = \`NEXT_PUBLIC_API_URL=\${apiUrl}\n\`;
+  if (supabaseUrl.trim()) webEnv += \`NEXT_PUBLIC_SUPABASE_URL=\${supabaseUrl.trim()}\n\`;
+  if (supabaseAnonKey.trim()) webEnv += \`NEXT_PUBLIC_SUPABASE_ANON_KEY=\${supabaseAnonKey.trim()}\n\`;
+  
+  fs.writeFileSync(webEnvPath, webEnv);
+
+
 
   console.log('✅ Arquivos .env atualizados!');
 
