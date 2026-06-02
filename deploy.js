@@ -106,15 +106,121 @@ async function run() {
   const supabaseUrl = await askQuestion('👉 Supabase URL (ex: https://[ref].supabase.co): ');
   const supabaseAnonKey = await askQuestion('👉 Supabase Anon Key: ');
 
-  // ─── 5. Evolution API (WhatsApp) — Opcional ───────────────────────────────────
-  console.log('\n📌 ETAPA 5/5 — WHATSAPP (Evolution API) — Opcional\n');
-  const useEvolution = await askQuestion('👉 Deseja configurar a Evolution API (WhatsApp)? (S/N) ');
+  // ─── 5. Evolution Go (WhatsApp) ────────────────────────────────────────────────
+  console.log('\n📌 ETAPA 5/5 — WHATSAPP (Evolution Go)\n');
+  const useEvolution = await askQuestion('👉 Deseja instalar o Evolution Go junto via Docker? (S/N) ');
+  const isEvolutionDocker = useEvolution.trim().toLowerCase() === 's';
+  
+  let evolutionDomain = '';
   let evolutionUrl = '';
-  let evolutionKey = '';
+  let evolutionKey = crypto.randomBytes(24).toString('hex');
+  let evoPort = 8080;
 
-  if (useEvolution.trim().toLowerCase() === 's') {
-    evolutionUrl = await askQuestion('👉 URL da Evolution API (ex: https://whatsapp.seudominio.com.br): ');
-    evolutionKey = await askQuestion('👉 Global API Key da Evolution: ');
+  if (isEvolutionDocker) {
+    evolutionDomain = await askQuestion('👉 Qual o domínio/subdomínio exclusivo do WhatsApp? (ex: zap.brokercloud.com.br): ');
+    evolutionDomain = evolutionDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    evolutionUrl = `https://${evolutionDomain}`;
+    console.log('\n🔍 Buscando porta livre para a Evolution Go...');
+    evoPort = await getFreePort(8080);
+    console.log(`✅ Evolution Go rodará na porta: ${evoPort}`);
+  } else {
+    const hasExternal = await askQuestion('👉 Você já tem uma Evolution API rodando externamente? (S/N) ');
+    if (hasExternal.trim().toLowerCase() === 's') {
+      evolutionUrl = await askQuestion('👉 URL externa da Evolution API: ');
+      evolutionKey = await askQuestion('👉 Global API Key da Evolution: ');
+    }
+  }
+
+  // ─── Atualizar o docker-compose.yml ──────────────────────────────────────────
+  if (isDocker || isEvolutionDocker) {
+    let composeContent = `services:\n`;
+    
+    if (isDocker) {
+      composeContent += `  postgres:
+    image: postgres:16-alpine
+    container_name: brokercloud_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: brokercloud
+      POSTGRES_PASSWORD: brokercloud_dev_pass
+      POSTGRES_DB: brokercloud
+    ports:
+      - "\${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brokercloud -d brokercloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: brokercloud_redis
+    restart: unless-stopped
+    ports:
+      - "\${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5\n\n`;
+    }
+
+    if (isEvolutionDocker) {
+      const dbUri = isDocker ? `postgresql://brokercloud:brokercloud_dev_pass@postgres:5432/brokercloud` : dbUrl;
+      const rdsUri = isDocker ? `redis://redis:6379` : redisUrl;
+      const apiUrlWebhook = domain === 'localhost' ? `http://host.docker.internal:${apiPort}` : `https://${apiDomain}`;
+
+      composeContent += `  evolution:
+    image: evoapicloud/evolution-go:latest
+    container_name: brokercloud_evolution
+    restart: unless-stopped
+    ports:
+      - "\${EVO_PORT:-8080}:8080"
+    environment:
+      - SERVER_PORT=8080
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=${dbUri}
+      - REDIS_URI=${rdsUri}
+      - GLOBAL_API_KEY=${evolutionKey}
+      - WEBHOOK_GLOBAL_URL=${apiUrlWebhook}/webhook/evolution
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+      - WEBHOOK_EVENTS_MESSAGES_UPDATE=true
+      - WEBHOOK_EVENTS_SEND_MESSAGE=true\n`;
+      
+      if (isDocker) {
+        composeContent += `    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy\n\n`;
+      }
+    }
+
+    if (isDocker || isEvolutionDocker) {
+      composeContent += `volumes:\n`;
+      if (isDocker) composeContent += `  postgres_data:\n  redis_data:\n`;
+      fs.writeFileSync(path.join(__dirname, 'docker-compose.yml'), composeContent);
+      console.log('✅ docker-compose.yml atualizado com sucesso!');
+    }
+  }
+
+  // Se escolheu Docker, tem que subir agora (o compose atualizado)
+  if (isDocker || isEvolutionDocker) {
+    console.log('\n🐳 Subindo contêineres do Docker em background...');
+    fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${isDocker ? dbUrl.split(':')[2].split('/')[0] : 5432}\nREDIS_PORT=${isDocker ? redisUrl.split(':')[2] : 6379}\nEVO_PORT=${evoPort}\n`);
+    try {
+      execSync('docker compose up -d', { cwd: __dirname, stdio: 'inherit' });
+      console.log('⏳ Aguardando 5 segundos para inicialização...');
+      execSync('sleep 5');
+    } catch (err) {
+      console.error('❌ Falha ao iniciar Docker.', err.message);
+    }
   }
 
   // ─── Montar o .env da API ─────────────────────────────────────────────────────
@@ -179,7 +285,7 @@ async function run() {
   console.log('\n⚙️  Gerando configurações para a VPS...');
 
   if (domain !== 'localhost') {
-    const nginxConf = `
+    let nginxConf = `
 # BrokerCloud — Nginx (gerado automaticamente)
 server {
     listen 80;
@@ -211,6 +317,27 @@ server {
     }
 }
 `;
+
+    if (isEvolutionDocker && evolutionDomain) {
+      nginxConf += `
+# Evolution Go API
+server {
+    listen 80;
+    server_name ${evolutionDomain};
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://localhost:${evoPort};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+`;
+    }
+
     fs.writeFileSync(path.join(__dirname, 'nginx.conf'), nginxConf.trim());
     console.log('✅ nginx.conf gerado com sucesso!');
   }
