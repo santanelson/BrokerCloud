@@ -29,6 +29,7 @@ export async function webhookRoutes(app: FastifyInstance) {
       switch (payload.event) {
         case 'Message':
         case 'SendMessage':
+        case 'messages.upsert':
           await handleMessageEvent(payload, tenant, app)
           break
         case 'Receipt':
@@ -55,18 +56,40 @@ export async function webhookRoutes(app: FastifyInstance) {
 }
 
 async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstance) {
+  // Support both legacy (Z-API/Evo v1) and standard Baileys (Evolution API v2) structures
+  const key = payload.data?.key || payload.data?.message?.key
   const info = payload.data?.Info
-  const msgData = payload.data?.Message
-  if (!info || !msgData) return
+  const msgData = payload.data?.message || payload.data?.Message
+  
+  if (!msgData) return
 
-  // Skip group messages for now
-  if (info.IsGroup) return
+  let jid = ''
+  let evolutionMessageId = ''
+  let isFromMe = false
+  let isGroup = false
+  let timestamp = new Date()
 
-  const jid = info.Chat
-  if (!jid) return
+  if (key) {
+    jid = key.remoteJid
+    evolutionMessageId = key.id
+    isFromMe = key.fromMe
+    isGroup = jid?.includes('@g.us')
+    timestamp = payload.data?.messageTimestamp ? new Date(payload.data.messageTimestamp * 1000) : new Date()
+  } else if (info) {
+    jid = info.Chat || info.RemoteJid
+    evolutionMessageId = info.ID
+    isFromMe = info.IsFromMe || payload.event === 'SendMessage' || payload.event === 'send.message'
+    isGroup = info.IsGroup || jid?.includes('@g.us')
+    timestamp = info.Timestamp ? new Date(info.Timestamp * 1000) : new Date()
+  }
+
+  if (!jid || isGroup) return
+
+  // Prevent creating a conversation if jid is completely undefined or invalid
+  if (typeof jid !== 'string') return
+
 
   // Dedup: check if we already saved this message (e.g. from SendMessage event)
-  const evolutionMessageId = info.ID
   if (evolutionMessageId) {
     const existing = await prisma.message.findFirst({
       where: { evolutionMessageId }
@@ -95,10 +118,7 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
   }
 
   // Determine direction
-  // 'Message' can be fromMe if we sent it via WhatsApp Web.
-  // 'SendMessage' is always an outbound message sent outside the app.
-  const isOutbound = payload.event === 'SendMessage' || info.IsFromMe
-  const direction = isOutbound ? 'out' : 'in'
+  const direction = isFromMe ? 'out' : 'in'
 
   // Process Media
   let mediaUrl = null
@@ -107,25 +127,42 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
   
   // Extract content
   let type = 'text'
-  let content = msgData.conversation || msgData.extendedTextMessage?.text
+  let content = msgData.conversation || msgData.extendedTextMessage?.text || msgData.imageMessage?.caption || msgData.videoMessage?.caption || ''
 
   const mediaResult = await processWebhookMedia(payload.data, tenant.id, conversation.id, evolutionMessageId)
   if (mediaResult) {
     mediaUrl = mediaResult.mediaUrl
     mediaMimetype = mediaResult.mediaMimetype
     mediaSize = mediaResult.mediaSize
-    content = mediaResult.content
+    content = content || mediaResult.content // Preserve caption if it exists
     
-    if (mediaMimetype.includes('image')) type = 'image'
-    else if (mediaMimetype.includes('video')) type = 'video'
-    else if (mediaMimetype.includes('audio')) type = 'audio'
-    else if (mediaMimetype.includes('application') || mediaMimetype.includes('text')) type = 'document'
+    if (mediaMimetype?.includes('image')) type = 'image'
+    else if (mediaMimetype?.includes('video')) type = 'video'
+    else if (mediaMimetype?.includes('audio')) type = 'audio'
+    else if (mediaMimetype?.includes('application') || mediaMimetype?.includes('text')) type = 'document'
     else type = 'document'
   }
 
   // Fallback content if empty
   if (!content) {
-    content = '[mensagem vazia ou tipo não suportado]'
+    if (msgData.audioMessage) {
+      content = '🎵 Áudio'
+      type = 'audio'
+    } else if (msgData.imageMessage) {
+      content = '📷 Imagem'
+      type = 'image'
+    } else if (msgData.videoMessage) {
+      content = '🎥 Vídeo'
+      type = 'video'
+    } else if (msgData.documentMessage) {
+      content = '📄 Documento'
+      type = 'document'
+    } else if (msgData.stickerMessage) {
+      content = '👾 Figurinha'
+      type = 'sticker'
+    } else {
+      content = '[mensagem vazia ou tipo não suportado]'
+    }
   }
 
   const message = await prisma.message.create({
@@ -139,7 +176,7 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
       mediaMimetype,
       mediaSize,
       status: direction === 'out' ? 'sent' : 'delivered',
-      sentAt: info.Timestamp ? new Date(info.Timestamp) : new Date(),
+      sentAt: timestamp,
     },
   })
 

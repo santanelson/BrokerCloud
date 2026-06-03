@@ -176,7 +176,7 @@ export async function sendTextMessage(tenantId: string, jid: string, text: strin
     })
   })
 
-  return res.data?.Info?.ID // Returns the evolutionMessageId
+  return res.key?.id || res.data?.key?.id || res.id || res.data?.Info?.ID // Returns the evolutionMessageId
 }
 
 export async function sendMediaMessage(tenantId: string, jid: string, url: string, type: string, caption?: string) {
@@ -201,5 +201,5 @@ export async function sendMediaMessage(tenantId: string, jid: string, url: strin
     })
   })
 
-  return res.data?.Info?.ID // Returns the evolutionMessageId
+  return res.key?.id || res.data?.key?.id || res.id || res.data?.Info?.ID // Returns the evolutionMessageId
 }
