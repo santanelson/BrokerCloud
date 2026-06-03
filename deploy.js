@@ -12,6 +12,45 @@ const rl = readline.createInterface({
 
 const askQuestion = (query) => new Promise((resolve) => rl.question(query, resolve));
 
+let isDockerStarted = false;
+
+function cleanupAndExit() {
+  console.log('\n\n🛑 Script cancelado! Desfazendo alterações e limpando arquivos gerados...');
+  
+  const filesToDelete = [
+    path.join(__dirname, 'docker-compose.yml'),
+    path.join(__dirname, '.env'),
+    path.join(__dirname, 'api', '.env'),
+    path.join(__dirname, 'web', '.env.local'),
+    path.join(__dirname, 'nginx.conf'),
+    path.join(__dirname, 'ecosystem.config.js'),
+    path.join(__dirname, 'credentials.txt')
+  ];
+
+  filesToDelete.forEach(file => {
+    if (fs.existsSync(file)) {
+      try {
+        fs.unlinkSync(file);
+        console.log(`🗑️  Excluído: ${path.basename(file)}`);
+      } catch (err) {}
+    }
+  });
+
+  if (isDockerStarted) {
+    console.log('🐳 Derrubando contêineres do Docker gerados...');
+    try {
+      execSync('docker compose down -v', { cwd: __dirname, stdio: 'ignore' });
+      console.log('✅ Contêineres removidos.');
+    } catch (err) {}
+  }
+
+  console.log('Limpeza concluída. Saindo...');
+  process.exit(1);
+}
+
+process.on('SIGINT', cleanupAndExit);
+process.on('SIGTERM', cleanupAndExit);
+
 // Função para buscar porta livre
 const getFreePort = (startPort) => {
   return new Promise((resolve, reject) => {
@@ -99,6 +138,7 @@ async function run() {
 
     console.log('\n🐳 Subindo contêineres do Docker em background...');
     try {
+      isDockerStarted = true;
       execSync('docker compose up -d', { cwd: __dirname, stdio: 'inherit' });
       console.log('⏳ Aguardando 5 segundos para o banco iniciar...');
       execSync('sleep 5');
@@ -229,6 +269,7 @@ async function run() {
     console.log('\n🐳 Subindo contêineres do Docker em background...');
     fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${isDocker ? dbUrl.split(':')[3].split('/')[0] : 5432}\nREDIS_PORT=${isDocker ? redisUrl.split(':')[2] : 6379}\nEVO_PORT=${evoPort}\n`);
     try {
+      isDockerStarted = true;
       execSync('docker compose up -d', { cwd: __dirname, stdio: 'inherit' });
       console.log('⏳ Aguardando 5 segundos para inicialização...');
       execSync('sleep 5');
