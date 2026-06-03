@@ -16,6 +16,11 @@ export async function webhookRoutes(app: FastifyInstance) {
 
     app.log.debug({ event: payload.event, instanceId: payload.instanceId }, 'Evolution webhook received')
 
+    // DEBUG: Dump payload to a file to inspect its structure
+    try {
+      require('fs').appendFileSync('webhook_debug.log', JSON.stringify(payload, null, 2) + '\n\n');
+    } catch (e) {}
+
     try {
       const tenant = await prisma.tenant.findFirst({
         where: { whatsappInstanceId: payload.instanceId, active: true },
