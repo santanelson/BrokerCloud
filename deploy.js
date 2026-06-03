@@ -433,15 +433,17 @@ module.exports = {
   console.log('\n🔨 Construindo o projeto (Build)... Pode demorar alguns minutos...');
 
   try {
+    const apiEnvVars = { ...process.env, DATABASE_URL: dbUrl.trim(), REDIS_URL: redisUrl.trim() };
+
     console.log('➜ Instalando dependências da API...');
-    execSync('npm install', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
+    execSync('npm install', { cwd: path.join(__dirname, 'api'), stdio: 'inherit', env: apiEnvVars });
 
     console.log('➜ Preparando o Banco de Dados (Prisma)...');
-    execSync('npx prisma generate', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
-    execSync('npx prisma migrate deploy', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
+    execSync('npx prisma generate', { cwd: path.join(__dirname, 'api'), stdio: 'inherit', env: apiEnvVars });
+    execSync('npx prisma migrate deploy', { cwd: path.join(__dirname, 'api'), stdio: 'inherit', env: apiEnvVars });
 
     console.log('➜ Construindo API...');
-    execSync('npm run build', { cwd: path.join(__dirname, 'api'), stdio: 'inherit' });
+    execSync('npm run build', { cwd: path.join(__dirname, 'api'), stdio: 'inherit', env: apiEnvVars });
 
     console.log('➜ Instalando dependências do Web...');
     execSync('npm install', { cwd: path.join(__dirname, 'web'), stdio: 'inherit' });
