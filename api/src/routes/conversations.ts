@@ -3,7 +3,8 @@ import { prisma } from '../db/client'
 import { getUser } from '../middleware/authenticate'
 import { paginationSchema } from '../schemas'
 import { z } from 'zod'
-
+import { sendTextMessage, sendMediaMessage } from '../services/evolution'
+import { emitToTenant } from '../lib/socket'
 const sendMessageSchema = z.object({
   content: z.string().min(1),
   type: z.enum(['text', 'image', 'audio', 'video', 'document']).default('text'),
@@ -93,16 +94,32 @@ export async function conversationRoutes(app: FastifyInstance) {
 
     const conv = await prisma.conversation.findFirst({
       where: { id: request.params.id, tenantId: user.tenantId },
-      include: { tenant: { select: { whatsappInstanceUrl: true, evolutionApiKey: true } } },
     })
     if (!conv) return reply.code(404).send({ error: 'NOT_FOUND' })
 
-    // TODO: Enviar via Evolution Go API
-    // await evolutionGoClient.sendMessage(conv.tenant, conv.whatsappJid, body.data)
+    let evolutionMessageId: string | undefined
+
+    try {
+      if (body.data.type === 'text') {
+        evolutionMessageId = await sendTextMessage(conv.tenantId, conv.whatsappJid, body.data.content)
+      } else if (body.data.mediaUrl) {
+        evolutionMessageId = await sendMediaMessage(
+          conv.tenantId, 
+          conv.whatsappJid, 
+          body.data.mediaUrl, 
+          body.data.type, 
+          body.data.content !== '[mídia]' ? body.data.content : undefined
+        )
+      }
+    } catch (e: any) {
+      app.log.error(e, 'Error sending WhatsApp message')
+      return reply.code(500).send({ error: 'WHATSAPP_ERROR', message: e.message })
+    }
 
     const message = await prisma.message.create({
       data: {
         conversationId: conv.id,
+        evolutionMessageId,
         direction: 'out',
         type: body.data.type,
         content: body.data.content,
@@ -116,6 +133,8 @@ export async function conversationRoutes(app: FastifyInstance) {
       where: { id: conv.id },
       data: { lastMessageAt: new Date() },
     })
+
+    emitToTenant(conv.tenantId, 'message:sent', { conversationId: conv.id, message })
 
     return reply.code(201).send(message)
   })

@@ -126,7 +126,7 @@ export interface Task {
 // ─── WhatsApp / Chat ──────────────────────────────────────────────────────────
 export type MessageDirection = 'in' | 'out'
 export type MessageType = 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker'
-export type MessageStatus = 'sent' | 'delivered' | 'read' | 'failed'
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed'
 
 export interface Message {
   id: string

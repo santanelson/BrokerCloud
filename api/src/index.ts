@@ -15,7 +15,9 @@ import { conversationRoutes } from './routes/conversations'
 import { webhookRoutes } from './routes/webhooks'
 import { tenantRoutes } from './routes/tenants'
 import { uploadRoutes } from './routes/upload'
+import { whatsappRoutes } from './routes/whatsapp'
 import { authenticate } from './middleware/authenticate'
+import { initSocket } from './lib/socket'
 
 const app = Fastify({
   logger: {
@@ -70,6 +72,7 @@ async function bootstrap() {
   await app.register(conversationRoutes, { prefix: '/conversations' })
   await app.register(webhookRoutes, { prefix: '/webhooks' })
   await app.register(uploadRoutes, { prefix: '/upload' })
+  await app.register(whatsappRoutes, { prefix: '/whatsapp' })
 
   // ── Graceful shutdown ──────────────────────────────────────────────────────
   const signals = ['SIGINT', 'SIGTERM']
@@ -88,6 +91,7 @@ async function bootstrap() {
 
   try {
     await app.listen({ port, host })
+    initSocket(app.server)
     app.log.info(`🚀 BrokerCloud API running on http://${host}:${port}`)
   } catch (err) {
     app.log.error(err)

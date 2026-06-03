@@ -217,12 +217,62 @@ export function useMessages(conversationId: string | null) {
 export function useSendMessage() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ conversationId, ...data }: { conversationId: string; content: string; type?: string }) =>
+    mutationFn: ({ conversationId, ...data }: { conversationId: string; content: string; type?: string; mediaUrl?: string; fileName?: string }) =>
       api.post(`/conversations/${conversationId}/messages`, data),
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['messages', vars.conversationId] })
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ['messages', vars.conversationId] })
+      
+      const previous = qc.getQueryData(['messages', vars.conversationId])
+      
+      const tempMessage = {
+        id: `temp-${Date.now()}`,
+        conversationId: vars.conversationId,
+        content: vars.content,
+        type: vars.type || 'text',
+        direction: 'out',
+        status: 'sending',
+        mediaUrl: vars.mediaUrl || null,
+        fileName: vars.fileName || null,
+        sentAt: new Date().toISOString(),
+      }
+
+      qc.setQueryData(['messages', vars.conversationId], (old: any) => {
+        if (!old) return { data: [tempMessage], nextCursor: null }
+        return {
+          ...old,
+          data: [tempMessage, ...old.data] // Prepend since we sort desc or append? We reverse in frontend or backend?
+          // The backend returns order by sentAt: 'desc', but then reverses it? Let's check how it's handled.
+          // Wait, backend does `data: messages.reverse()`. So the frontend expects them in chronological order.
+        }
+      })
+
+      // Fix order: If backend returns chronological (oldest to newest), we append.
+      qc.setQueryData(['messages', vars.conversationId], (old: any) => {
+        if (!old) return { data: [tempMessage], nextCursor: null }
+        return {
+          ...old,
+          data: [...old.data, tempMessage]
+        }
+      })
+
+      return { previous, tempId: tempMessage.id }
+    },
+    onSuccess: (serverMessage, vars, context) => {
+      qc.setQueryData(['messages', vars.conversationId], (old: any) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.map((m: any) => m.id === context.tempId ? serverMessage : m)
+        }
+      })
       qc.invalidateQueries({ queryKey: ['conversations'] })
     },
+    onError: (err, vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(['messages', vars.conversationId], context.previous)
+      }
+      alert('Erro ao enviar mensagem.')
+    }
   })
 }
 

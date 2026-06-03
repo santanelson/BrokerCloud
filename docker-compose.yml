@@ -1,37 +1,64 @@
+version: '3.8'
+
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: brokercloud_postgres
-    restart: unless-stopped
+  db:
+    image: postgres:15-alpine
+    container_name: brokercloud_db
+    restart: always
     environment:
-      POSTGRES_USER: brokercloud
-      POSTGRES_PASSWORD: brokercloud_dev_pass
-      POSTGRES_DB: brokercloud
-    ports:
-      - "${DB_PORT:-5432}:5432"
+      POSTGRES_USER: ${DB_USER:-brokercloud}
+      POSTGRES_PASSWORD: ${DB_PASS:-brokercloud_pass}
+      POSTGRES_DB: ${DB_NAME:-brokercloud}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U brokercloud -d brokercloud"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - brokercloud_db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
 
   redis:
     image: redis:7-alpine
     container_name: brokercloud_redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    restart: always
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - brokercloud_redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  api:
+    build: 
+      context: ./api
+    container_name: brokercloud_api
+    restart: always
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - ./api/.env
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-brokercloud}:${DB_PASS:-brokercloud_pass}@db:5432/${DB_NAME:-brokercloud}?schema=public
+      - REDIS_URL=redis://redis:6379
+      # O API_PUBLIC_URL deve estar configurado no seu ./api/.env apontando para o seu domínio (ex: https://api.selectahome.com.br)
+    ports:
+      - "3001:3001" # Expondo externamente caso não use Nginx dockerizado. Se for usar Nginx na VPS, pode mudar para 127.0.0.1:3001:3001
+
+  web:
+    build:
+      context: ./web
+      args:
+        # As variáveis de build precisam ser passadas no momento da criação da imagem
+        # Se elas existirem no ambiente da VPS, serão puxadas
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    container_name: brokercloud_web
+    restart: always
+    depends_on:
+      - api
+    env_file:
+      - ./web/.env.local
+    ports:
+      - "3000:3000"
 
 volumes:
-  postgres_data:
-  redis_data:
+  brokercloud_db_data:
+  brokercloud_redis_data:

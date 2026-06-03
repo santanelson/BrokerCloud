@@ -46,7 +46,7 @@ async function run() {
 
   // ─── 1. Domínio ──────────────────────────────────────────────────────────────
   console.log('📌 ETAPA 1/5 — DOMÍNIO\n');
-  let domain = await askQuestion('👉 Qual o seu domínio principal (ex: brokercloud.com.br)? ');
+  let domain = await askQuestion('👉 Qual o domínio/subdomínio do PAINEL WEB (ex: painel.brokercloud.com.br)? ');
   domain = domain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
 
   if (!domain) {
@@ -54,7 +54,11 @@ async function run() {
     domain = 'localhost';
   }
 
-  const apiDomain = domain === 'localhost' ? 'localhost' : `api.${domain}`;
+  let apiDomain = 'localhost';
+  if (domain !== 'localhost') {
+    apiDomain = await askQuestion('👉 Qual o domínio/subdomínio da API (ex: api.brokercloud.com.br)? ');
+    apiDomain = apiDomain.trim().replace(/^https?:\/\//, '').replace(/\/$/, '') || `api.${domain}`;
+  }
 
   // ─── 2. Infraestrutura (Docker / Manual) ──────────────────────────────────────
   console.log('\n📌 ETAPA 2/5 — INFRAESTRUTURA (Banco de Dados & Redis)\n');
@@ -63,6 +67,10 @@ async function run() {
 
   let dbUrl = '';
   let redisUrl = '';
+
+  let dbUser = 'brokercloud';
+  let dbPass = 'brokercloud_dev_pass';
+  let dbName = 'brokercloud';
 
   console.log('\n🔍 Buscando portas disponíveis no servidor...');
   const apiPort = await getFreePort(3001);
@@ -77,7 +85,14 @@ async function run() {
     console.log(`✅ Docker Postgres rodará na porta: ${dbPort}`);
     console.log(`✅ Docker Redis rodará na porta: ${redisPort}`);
 
-    dbUrl = `postgresql://brokercloud:brokercloud_dev_pass@localhost:${dbPort}/brokercloud`;
+    const customDb = await askQuestion('👉 Deseja customizar usuário/senha/nome do Banco de Dados? (S/N - Padrão é N): ');
+    if (['s', 'sim', 'y', 'yes'].includes(customDb.trim().toLowerCase())) {
+      dbUser = await askQuestion('   👤 Usuário do DB (ex: admin): ') || 'brokercloud';
+      dbPass = await askQuestion('   🔑 Senha do DB: ') || 'brokercloud_dev_pass';
+      dbName = await askQuestion('   🗄️  Nome do DB: ') || 'brokercloud';
+    }
+
+    dbUrl = `postgresql://${dbUser}:${dbPass}@localhost:${dbPort}/${dbName}`;
     redisUrl = `redis://localhost:${redisPort}`;
 
     fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${dbPort}\nREDIS_PORT=${redisPort}\n`);
@@ -141,9 +156,9 @@ async function run() {
     container_name: brokercloud_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: brokercloud
-      POSTGRES_PASSWORD: brokercloud_dev_pass
-      POSTGRES_DB: brokercloud
+      POSTGRES_USER: ${dbUser}
+      POSTGRES_PASSWORD: ${dbPass}
+      POSTGRES_DB: ${dbName}
     ports:
       - "\${DB_PORT:-5432}:5432"
     volumes:
@@ -171,7 +186,7 @@ async function run() {
     }
 
     if (isEvolutionDocker) {
-      const dbUri = isDocker ? `postgresql://brokercloud:brokercloud_dev_pass@postgres:5432/brokercloud` : dbUrl;
+      const dbUri = isDocker ? `postgresql://${dbUser}:${dbPass}@postgres:5432/${dbName}` : dbUrl;
       const rdsUri = isDocker ? `redis://redis:6379` : redisUrl;
       const apiUrlWebhook = domain === 'localhost' ? `http://host.docker.internal:${apiPort}` : `https://${apiDomain}`;
 
@@ -187,7 +202,7 @@ async function run() {
       - POSTGRES_USERS_DB=${dbUri}?sslmode=disable
       - DATABASE_SAVE_MESSAGES=false
       - GLOBAL_API_KEY=${evolutionKey}
-      - WEBHOOK_GLOBAL_URL=${apiUrlWebhook}/webhook/evolution
+      - WEBHOOK_GLOBAL_URL=${apiUrlWebhook}/webhooks/evolution
       - WEBHOOK_GLOBAL_ENABLED=true
       - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
       - WEBHOOK_EVENTS_MESSAGES_UPDATE=true
@@ -243,6 +258,9 @@ async function run() {
   apiEnv = setEnvVar(apiEnv, 'PORT', apiPort);
   apiEnv = setEnvVar(apiEnv, 'HOST', '0.0.0.0');
   apiEnv = setEnvVar(apiEnv, 'FRONTEND_URL', frontendUrl);
+  
+  const apiPublicUrl = domain === 'localhost' ? `http://localhost:${apiPort}` : `https://${apiDomain}`;
+  apiEnv = setEnvVar(apiEnv, 'API_PUBLIC_URL', apiPublicUrl);
 
   // Banco e Redis
   if (dbUrl.trim()) apiEnv = setEnvVar(apiEnv, 'DATABASE_URL', dbUrl.trim());
@@ -403,6 +421,41 @@ module.exports = {
     console.log('   sudo ln -sf /etc/nginx/sites-available/brokercloud /etc/nginx/sites-enabled/');
     console.log('   sudo systemctl reload nginx');
     console.log('   sudo certbot --nginx\n');
+
+    // ─── Gerar Documento de Credenciais ──────────────────────────────────────────
+    console.log('\n📄 Gerando documento com as credenciais (credentials.txt)...');
+    const credentialsContent = `
+===========================================================
+   BROKERCLOUD — CREDENCIAIS E DADOS DE ACESSO (MANTENHA SEGURO)
+===========================================================
+
+[DOMÍNIOS]
+Painel Web: ${frontendUrl}
+API: ${apiPublicUrl}
+
+[BANCO DE DADOS POSTGRESQL]
+URL de Conexão: ${dbUrl}
+${isDocker ? `Database: ${dbName}\nUsuário: ${dbUser}\nSenha: ${dbPass}` : 'Credenciais externas fornecidas manualmente.'}
+
+[REDIS]
+URL de Conexão: ${redisUrl}
+
+[WHATSAPP - EVOLUTION GO]
+Domínio / URL: ${evolutionUrl || 'Não configurado via script'}
+Global API Key: ${evolutionKey || 'Não configurada via script'}
+
+[SEGURANÇA]
+JWT Secret: ${jwtSecret}
+JWT Refresh Secret: ${jwtRefreshSecret}
+
+[SUPABASE]
+URL: ${supabaseUrl || 'Não preenchido'}
+Anon Key: ${supabaseAnonKey || 'Não preenchida'}
+===========================================================
+`;
+    fs.writeFileSync(path.join(__dirname, 'credentials.txt'), credentialsContent.trim());
+    console.log('✅ credentials.txt gerado com sucesso! Guarde este arquivo em um local seguro.');
+
   } catch (err) {
     console.error('\n❌ Erro durante o build:', err.message);
   }

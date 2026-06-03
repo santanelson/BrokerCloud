@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/lib/stores/auth-store'
 import { useTenant, useTenantUsers, useUpdateTenant, useInviteUser } from '@/lib/hooks'
+import { WhatsAppConnect } from '@/components/chat/WhatsAppConnect'
+import { api } from '@/lib/api'
+import { useEffect } from 'react'
 
 type Tab = 'geral' | 'equipe' | 'whatsapp'
 
@@ -179,15 +182,37 @@ function TeamSettings() {
 }
 
 function WhatsAppSettings() {
-  const { data: tenant, isLoading } = useTenant()
-  const updateTenant = useUpdateTenant()
-  const [url, setUrl] = useState('')
-  const [apiKey, setApiKey] = useState('')
+  const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'loading'>('loading')
+  const [disconnecting, setDisconnecting] = useState(false)
 
-  if (isLoading) return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+  const fetchStatus = async () => {
+    try {
+      const data = await api.get('/whatsapp/status')
+      setStatus(data.state)
+    } catch (err) {
+      setStatus('disconnected')
+    }
+  }
 
-  const whatsappUrl = url || tenant?.whatsappInstanceUrl || ''
-  const evoKey = apiKey || tenant?.evolutionApiKey || ''
+  useEffect(() => {
+    fetchStatus()
+  }, [])
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true)
+    try {
+      await api.post('/whatsapp/logout', {})
+      setStatus('disconnected')
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  if (status === 'loading') {
+    return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -198,54 +223,31 @@ function WhatsAppSettings() {
           </div>
           <div>
             <h3 className="font-manrope font-bold text-on-surface">Integração WhatsApp</h3>
-            <p className="text-[11px] text-on-surface-variant">Conecte sua instância do Evolution Go API.</p>
+            <p className="text-[11px] text-on-surface-variant">Gerencie a conexão do número da sua imobiliária.</p>
           </div>
         </div>
 
-        <div className={cn(
-          'flex items-center gap-2 p-3 rounded-lg border',
-          whatsappUrl ? 'bg-primary/5 border-primary/20' : 'bg-error/5 border-error/20'
-        )}>
-          <span className={cn('w-2 h-2 rounded-full', whatsappUrl ? 'bg-primary animate-pulse' : 'bg-error')} />
-          <span className={cn('text-body-sm font-semibold', whatsappUrl ? 'text-primary' : 'text-error')}>
-            {whatsappUrl ? 'Configurado' : 'Não configurado'}
-          </span>
-        </div>
-
-        <div>
-          <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">URL da Instância Evolution Go</label>
-          <input value={whatsappUrl} onChange={(e) => setUrl(e.target.value)} placeholder="https://sua-instancia.com"
-            className="w-full h-10 bg-surface-container-low border border-outline-variant rounded-lg px-4 text-on-surface text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">API Key</label>
-          <input type="password" value={evoKey} onChange={(e) => setApiKey(e.target.value)} placeholder="Chave secreta da API"
-            className="w-full h-10 bg-surface-container-low border border-outline-variant rounded-lg px-4 text-on-surface text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" />
-        </div>
-        <div className="flex justify-end pt-2">
-          <Button variant="primary" size="md" loading={updateTenant.isPending}
-            onClick={() => updateTenant.mutate({ whatsappInstanceUrl: whatsappUrl || '', evolutionApiKey: evoKey })}>
-            Salvar Configurações
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-surface-container rounded-xl border border-outline-variant p-6">
-        <h3 className="font-manrope font-bold text-on-surface mb-3">Como funciona?</h3>
-        <div className="space-y-3 text-body-sm text-on-surface-variant">
-          <div className="flex items-start gap-3">
-            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">1</span>
-            <p>Instale o <strong className="text-on-surface">Evolution Go API</strong> no seu servidor.</p>
+        {status === 'connected' ? (
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center gap-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <span className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+              <div>
+                <span className="text-body-md font-semibold text-primary block">Conectado e Operante</span>
+                <span className="text-xs text-on-surface-variant">Sua imobiliária está pronta para receber e enviar mensagens.</span>
+              </div>
+            </div>
+            
+            <div className="flex justify-end pt-2">
+              <Button variant="outline" size="md" className="text-error border-error/50 hover:bg-error/10 hover:border-error" loading={disconnecting} onClick={handleDisconnect}>
+                Desconectar WhatsApp
+              </Button>
+            </div>
           </div>
-          <div className="flex items-start gap-3">
-            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">2</span>
-            <p>Cole a <strong className="text-on-surface">URL da instância</strong> e a <strong className="text-on-surface">API Key</strong> nos campos acima.</p>
+        ) : (
+          <div className="pt-4 border-t border-outline-variant/50">
+             <WhatsAppConnect onConnected={fetchStatus} />
           </div>
-          <div className="flex items-start gap-3">
-            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">3</span>
-            <p>Configure o webhook do Evolution Go para apontar para: <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-[11px]">sua-api.com/webhooks/evolution</code></p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )
