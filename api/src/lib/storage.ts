@@ -1,9 +1,20 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+let supabase: SupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseServiceKey)
+function getSupabase() {
+  if (supabase) return supabase;
+  
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase credentials (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY) are missing in environment variables.');
+  }
+  
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+  return supabase;
+}
 
 export async function generatePresignedUploadUrl(
   key: string,
@@ -19,7 +30,9 @@ export async function uploadFileToR2(
   fileName: string,
   contentType: string
 ): Promise<string> {
-  const { data, error } = await supabase.storage
+  const client = getSupabase();
+  
+  const { data, error } = await client.storage
     .from('broker')
     .upload(fileName, fileBuffer, {
       contentType,
@@ -30,7 +43,7 @@ export async function uploadFileToR2(
     throw new Error(`Upload failed: ${error.message}`)
   }
 
-  const { data: publicUrlData } = supabase.storage
+  const { data: publicUrlData } = client.storage
     .from('broker')
     .getPublicUrl(fileName)
 
