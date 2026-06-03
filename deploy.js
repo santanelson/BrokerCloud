@@ -270,7 +270,9 @@ async function run() {
     fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${isDocker ? dbUrl.split(':')[3].split('/')[0] : 5432}\nREDIS_PORT=${isDocker ? redisUrl.split(':')[2] : 6379}\nEVO_PORT=${evoPort}\n`);
     try {
       isDockerStarted = true;
-      execSync('docker compose up -d', { cwd: __dirname, stdio: 'inherit' });
+      if (isDocker) {
+        execSync('docker compose up -d postgres redis', { cwd: __dirname, stdio: 'inherit' });
+      }
       console.log('⏳ Aguardando 5 segundos para inicialização...');
       execSync('sleep 5');
     } catch (err) {
@@ -498,6 +500,16 @@ Anon Key: ${supabaseAnonKey || 'Não preenchida'}
 `;
     fs.writeFileSync(path.join(__dirname, 'credentials.txt'), credentialsContent.trim());
     console.log('✅ credentials.txt gerado com sucesso! Guarde este arquivo em um local seguro.');
+
+    if (isEvolutionDocker) {
+      console.log('\n🚀 Iniciando contêiner do Evolution Go...');
+      try {
+        execSync('docker compose up -d evolution', { cwd: __dirname, stdio: 'inherit' });
+        console.log('✅ Evolution Go rodando perfeitamente!');
+      } catch (err) {
+        console.error('❌ Falha ao iniciar Evolution Go:', err.message);
+      }
+    }
 
   } catch (err) {
     console.error('\n❌ Erro durante o build:', err.message);
