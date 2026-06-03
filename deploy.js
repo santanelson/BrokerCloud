@@ -119,8 +119,8 @@ async function run() {
   console.log(`✅ Web rodará na porta: ${webPort}`);
 
   if (isDocker) {
-    const dbPort = await getFreePort(5432);
-    const redisPort = await getFreePort(6379);
+    const dbPort = await getFreePort(5440);
+    const redisPort = await getFreePort(6380);
     console.log(`✅ Docker Postgres rodará na porta: ${dbPort}`);
     console.log(`✅ Docker Redis rodará na porta: ${redisPort}`);
 
@@ -131,8 +131,8 @@ async function run() {
       dbName = await askQuestion('   🗄️  Nome do DB: ') || 'brokercloud';
     }
 
-    dbUrl = `postgresql://${dbUser}:${dbPass}@localhost:${dbPort}/${dbName}`;
-    redisUrl = `redis://localhost:${redisPort}`;
+    dbUrl = `postgresql://${dbUser}:${dbPass}@127.0.0.1:${dbPort}/${dbName}`;
+    redisUrl = `redis://127.0.0.1:${redisPort}`;
 
     fs.writeFileSync(path.join(__dirname, '.env'), `DB_PORT=${dbPort}\nREDIS_PORT=${redisPort}\n`);
 
