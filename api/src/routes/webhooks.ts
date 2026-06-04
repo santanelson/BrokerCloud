@@ -61,6 +61,9 @@ export async function webhookRoutes(app: FastifyInstance) {
   })
 }
 
+// In-memory cache para prevenir race conditions em webhooks simultâneos
+const processingMessages = new Set<string>()
+
 function extractMessageData(body: any) {
   const key = body.data?.key || body.data?.message?.key
   const info = body.data?.Info
@@ -100,9 +103,18 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
   const { remoteJid, evolutionMessageId, isFromMe, pushName, content, mediaType, msgData } = extractMessageData(payload)
 
   if (!remoteJid || !evolutionMessageId) return
-  if (remoteJid.endsWith('@g.us')) return
+  if (remoteJid.endsWith('@g.us') || remoteJid.includes('@lid')) return
 
-  // Dedup: check se já salvamos essa mensagem
+  // Proteção contra Race Conditions (Webhooks simultâneos do mesmo evento)
+  if (processingMessages.has(evolutionMessageId)) return
+  processingMessages.add(evolutionMessageId)
+  
+  // Limpa o cache após 10 segundos
+  setTimeout(() => {
+    processingMessages.delete(evolutionMessageId)
+  }, 10000)
+
+  // Dedup: check se já salvamos essa mensagem no banco
   const existing = await prisma.message.findFirst({
     where: { evolutionMessageId }
   })
