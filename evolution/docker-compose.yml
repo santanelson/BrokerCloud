@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: brokercloud_evolution_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${EVOLUTION_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?Defina EVOLUTION_DB_PASSWORD em evolution/.env}
+    volumes:
+      - evolution_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${EVOLUTION_DB_PORT:-55433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${EVOLUTION_DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  evolution-go:
+    image: evoapicloud/evolution-go:latest
+    container_name: brokercloud_evolution_go
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      CLIENT_NAME: ${EVOLUTION_CLIENT_NAME:-evolution}
+      GLOBAL_API_KEY: ${EVOLUTION_GLOBAL_API_KEY:?Defina EVOLUTION_GLOBAL_API_KEY em evolution/.env}
+      POSTGRES_AUTH_DB: postgresql://${EVOLUTION_DB_USER:-postgres}:${EVOLUTION_DB_PASSWORD}@postgres:5432/${EVOLUTION_AUTH_DB:-evogo_auth}?sslmode=disable
+      POSTGRES_USERS_DB: postgresql://${EVOLUTION_DB_USER:-postgres}:${EVOLUTION_DB_PASSWORD}@postgres:5432/${EVOLUTION_USERS_DB:-evogo_users}?sslmode=disable
+      DATABASE_SAVE_MESSAGES: ${DATABASE_SAVE_MESSAGES:-false}
+      CONNECT_ON_STARTUP: ${CONNECT_ON_STARTUP:-true}
+      WEBHOOKFILES: ${WEBHOOKFILES:-true}
+      WADEBUG: ${WADEBUG:-INFO}
+      LOGTYPE: ${LOGTYPE:-console}
+    ports:
+      - "${EVOLUTION_PORT:-8080}:8080"
+
+volumes:
+  evolution_postgres_data:

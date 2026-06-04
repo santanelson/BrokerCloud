@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "npx concurrently \"npm run dev --prefix api\" \"npm run dev --prefix web\"",
     "install:all": "npm install && npm install --prefix api && npm install --prefix web",
-    "deploy": "node deploy.js"
+    "deploy": "node deploy.js",
+    "evolution:setup": "node install-evolution.js --setup",
+    "evolution:check": "node install-evolution.js --check",
+    "evolution:deploy": "node install-evolution.js"
   }
 }

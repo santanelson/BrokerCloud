@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -12,7 +10,7 @@ services:
     volumes:
       - brokercloud_db_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
 
   redis:
     image: redis:7-alpine
@@ -21,7 +19,7 @@ services:
     volumes:
       - brokercloud_redis_data:/data
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
 
   api:
     build: 
@@ -38,7 +36,7 @@ services:
       - REDIS_URL=redis://redis:6379
       # O API_PUBLIC_URL deve estar configurado no seu ./api/.env apontando para o seu domínio (ex: https://api.selectahome.com.br)
     ports:
-      - "3001:3001" # Expondo externamente caso não use Nginx dockerizado. Se for usar Nginx na VPS, pode mudar para 127.0.0.1:3001:3001
+      - "${API_PORT:-3001}:3001"
 
   web:
     build:
@@ -46,18 +44,21 @@ services:
       args:
         # As variáveis de build precisam ser passadas no momento da criação da imagem
         # Se elas existirem no ambiente da VPS, serão puxadas
-        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-        - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?Defina NEXT_PUBLIC_API_URL no .env da raiz antes do build}
+        - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:?Defina NEXT_PUBLIC_SOCKET_URL no .env da raiz antes do build}
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:?Defina NEXT_PUBLIC_SUPABASE_URL no .env da raiz antes do build}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Defina NEXT_PUBLIC_SUPABASE_ANON_KEY no .env da raiz antes do build}
     container_name: brokercloud_web
     restart: always
     depends_on:
       - api
-    env_file:
-      - ./web/.env.local
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?Defina NEXT_PUBLIC_API_URL no .env da raiz antes do build}
+      - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:?Defina NEXT_PUBLIC_SOCKET_URL no .env da raiz antes do build}
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:?Defina NEXT_PUBLIC_SUPABASE_URL no .env da raiz antes do build}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Defina NEXT_PUBLIC_SUPABASE_ANON_KEY no .env da raiz antes do build}
     ports:
-      - "3000:3000"
+      - "${WEB_PORT:-3000}:3000"
 
 volumes:
   brokercloud_db_data:
