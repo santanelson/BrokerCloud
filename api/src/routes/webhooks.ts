@@ -139,7 +139,7 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
   let mediaMimetype = null
   let mediaSize = null
   
-  let finalType = type
+  let finalType = mediaType || 'text'
   let finalContent = content
 
   const mediaResult = await processWebhookMedia(payload.data, tenant.id, conversation.id, evolutionMessageId)
