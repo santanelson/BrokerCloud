@@ -10,11 +10,12 @@ export async function webhookRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const payload = request.body as any
 
-    if (!payload?.event || !payload?.instanceId) {
+    const instanceId = payload?.instance || payload?.instanceId || payload?.data?.instance
+    if (!payload?.event || !instanceId) {
       return reply.code(400).send({ error: 'INVALID_PAYLOAD' })
     }
 
-    app.log.debug({ event: payload.event, instanceId: payload.instanceId }, 'Evolution webhook received')
+    app.log.debug({ event: payload.event, instanceId }, 'Evolution webhook received')
 
     // DEBUG: Dump payload to a file to inspect its structure
     try {
@@ -23,11 +24,11 @@ export async function webhookRoutes(app: FastifyInstance) {
 
     try {
       const tenant = await prisma.tenant.findFirst({
-        where: { whatsappInstanceId: payload.instanceId, active: true },
+        where: { whatsappInstanceId: instanceId, active: true },
       })
 
       if (!tenant) {
-        app.log.warn({ instanceId: payload.instanceId }, 'Webhook received for unknown or inactive tenant')
+        app.log.warn({ instanceId }, 'Webhook received for unknown or inactive tenant')
         return reply.code(200).send({ received: true })
       }
 
@@ -60,55 +61,63 @@ export async function webhookRoutes(app: FastifyInstance) {
   })
 }
 
-async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstance) {
-  // Support both legacy (Z-API/Evo v1) and standard Baileys (Evolution API v2) structures
-  const key = payload.data?.key || payload.data?.message?.key
-  const info = payload.data?.Info
-  const msgData = payload.data?.message || payload.data?.Message
-  
-  if (!msgData) return
+function extractMessageData(body: any) {
+  const key = body.data?.key || body.data?.message?.key
+  const info = body.data?.Info
+  const msgData = body.data?.message || body.data?.Message
 
-  let jid = ''
-  let evolutionMessageId = ''
+  let remoteJid = null
+  let evolutionMessageId = null
   let isFromMe = false
-  let isGroup = false
-  let timestamp = new Date()
+  let pushName = body.data?.pushName || info?.PushName || ''
 
   if (key) {
-    jid = key.remoteJid
+    remoteJid = key.remoteJid
     evolutionMessageId = key.id
     isFromMe = key.fromMe
-    isGroup = jid?.includes('@g.us')
-    timestamp = payload.data?.messageTimestamp ? new Date(payload.data.messageTimestamp * 1000) : new Date()
   } else if (info) {
-    jid = info.Chat || info.RemoteJid
+    remoteJid = info.Chat || info.RemoteJid
     evolutionMessageId = info.ID
-    isFromMe = info.IsFromMe || payload.event === 'SendMessage' || payload.event === 'send.message'
-    isGroup = info.IsGroup || jid?.includes('@g.us')
-    timestamp = info.Timestamp ? new Date(info.Timestamp * 1000) : new Date()
+    isFromMe = info.IsFromMe || body.event === 'SendMessage' || body.event === 'send.message'
   }
 
-  if (!jid || isGroup) return
+  let content = msgData?.conversation || msgData?.extendedTextMessage?.text || msgData?.imageMessage?.caption || msgData?.videoMessage?.caption || ''
+  
+  let mediaType = null
+  if (msgData?.imageMessage) mediaType = 'image'
+  else if (msgData?.videoMessage) mediaType = 'video'
+  else if (msgData?.audioMessage) mediaType = 'audio'
+  else if (msgData?.documentMessage) mediaType = 'document'
+  else if (msgData?.stickerMessage) mediaType = 'sticker'
 
-  // Prevent creating a conversation if jid is completely undefined or invalid
-  if (typeof jid !== 'string') return
+  return { remoteJid, evolutionMessageId, isFromMe, pushName, content, mediaType, msgData }
+}
 
+async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstance) {
+  // Logger temporário estruturado (pode ser removido após validação em produção)
+  app.log.info({ event: payload.event, rawBody: payload }, '[webhook] payload recebido')
 
-  // Dedup: check if we already saved this message (e.g. from SendMessage event)
-  if (evolutionMessageId) {
-    const existing = await prisma.message.findFirst({
-      where: { evolutionMessageId }
-    })
-    if (existing) return
-  }
+  const { remoteJid, evolutionMessageId, isFromMe, pushName, content, mediaType, msgData } = extractMessageData(payload)
 
-  // Find or create conversation
+  if (!remoteJid || !evolutionMessageId) return
+  if (remoteJid.endsWith('@g.us')) return
+
+  // Dedup: check se já salvamos essa mensagem
+  const existing = await prisma.message.findFirst({
+    where: { evolutionMessageId }
+  })
+  if (existing) return
+
+  const timestamp = payload.data?.messageTimestamp 
+    ? new Date(payload.data.messageTimestamp * 1000) 
+    : (payload.data?.Info?.Timestamp ? new Date(payload.data.Info.Timestamp * 1000) : new Date())
+
   let conversation = await prisma.conversation.findUnique({
-    where: { tenantId_whatsappJid: { tenantId: tenant.id, whatsappJid: jid } },
+    where: { tenantId_whatsappJid: { tenantId: tenant.id, whatsappJid: remoteJid } },
   })
 
   if (!conversation) {
-    const phone = jid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+    const phone = remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
     const lead = await prisma.lead.findFirst({
       where: { tenantId: tenant.id, phone: { contains: phone.slice(-9) } },
     })
@@ -116,7 +125,7 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
     conversation = await prisma.conversation.create({
       data: {
         tenantId: tenant.id,
-        whatsappJid: jid,
+        whatsappJid: remoteJid,
         leadId: lead?.id ?? null,
       },
     })
@@ -130,43 +139,42 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
   let mediaMimetype = null
   let mediaSize = null
   
-  // Extract content
-  let type = 'text'
-  let content = msgData.conversation || msgData.extendedTextMessage?.text || msgData.imageMessage?.caption || msgData.videoMessage?.caption || ''
+  let finalType = type
+  let finalContent = content
 
   const mediaResult = await processWebhookMedia(payload.data, tenant.id, conversation.id, evolutionMessageId)
   if (mediaResult) {
     mediaUrl = mediaResult.mediaUrl
     mediaMimetype = mediaResult.mediaMimetype
     mediaSize = mediaResult.mediaSize
-    content = content || mediaResult.content // Preserve caption if it exists
+    finalContent = finalContent || mediaResult.content // Preserve caption se existir
     
-    if (mediaMimetype?.includes('image')) type = 'image'
-    else if (mediaMimetype?.includes('video')) type = 'video'
-    else if (mediaMimetype?.includes('audio')) type = 'audio'
-    else if (mediaMimetype?.includes('application') || mediaMimetype?.includes('text')) type = 'document'
-    else type = 'document'
+    if (mediaMimetype?.includes('image')) finalType = 'image'
+    else if (mediaMimetype?.includes('video')) finalType = 'video'
+    else if (mediaMimetype?.includes('audio')) finalType = 'audio'
+    else if (mediaMimetype?.includes('application') || mediaMimetype?.includes('text')) finalType = 'document'
+    else finalType = 'document'
   }
 
-  // Fallback content if empty
-  if (!content) {
-    if (msgData.audioMessage) {
-      content = '🎵 Áudio'
-      type = 'audio'
-    } else if (msgData.imageMessage) {
-      content = '📷 Imagem'
-      type = 'image'
-    } else if (msgData.videoMessage) {
-      content = '🎥 Vídeo'
-      type = 'video'
-    } else if (msgData.documentMessage) {
-      content = '📄 Documento'
-      type = 'document'
-    } else if (msgData.stickerMessage) {
-      content = '👾 Figurinha'
-      type = 'sticker'
+  // Fallback content se vazio
+  if (!finalContent) {
+    if (mediaType === 'audio') {
+      finalContent = '🎵 Áudio'
+      finalType = 'audio'
+    } else if (mediaType === 'image') {
+      finalContent = '📷 Imagem'
+      finalType = 'image'
+    } else if (mediaType === 'video') {
+      finalContent = '🎥 Vídeo'
+      finalType = 'video'
+    } else if (mediaType === 'document') {
+      finalContent = '📄 Documento'
+      finalType = 'document'
+    } else if (mediaType === 'sticker') {
+      finalContent = '👾 Figurinha'
+      finalType = 'sticker'
     } else {
-      content = '[mensagem vazia ou tipo não suportado]'
+      finalContent = '[mensagem vazia ou tipo não suportado]'
     }
   }
 
@@ -175,8 +183,8 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
       conversationId: conversation.id,
       evolutionMessageId,
       direction,
-      type: type as any,
-      content,
+      type: finalType as any,
+      content: finalContent,
       mediaUrl,
       mediaMimetype,
       mediaSize,

@@ -51,8 +51,12 @@ export default function ChatPage() {
       // Update messages cache
       qc.setQueryData(['messages', data.conversationId], (old: any) => {
         if (!old) return old
-        // Avoid duplicate by checking ID
-        if (old.data.some((m: Message) => m.id === data.message.id)) return old
+        // Avoid duplicate by checking ID and evolutionMessageId
+        if (old.data.some((m: any) => 
+          m.id === data.message.id || 
+          (m.evolutionMessageId && m.evolutionMessageId === (data.message as any).evolutionMessageId)
+        )) return old
+        
         return { ...old, data: [...old.data, data.message] }
       })
       // Update conversations list order
