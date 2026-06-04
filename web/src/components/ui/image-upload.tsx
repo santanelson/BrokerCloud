@@ -31,6 +31,7 @@ export function ImageUpload({ onUpload, className }: ImageUploadProps) {
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       await processFiles(Array.from(e.dataTransfer.files))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

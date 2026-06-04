@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, SmartphoneNfc, CheckCircle2 } from 'lucide-react';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import { RefreshCw, SmartphoneNfc } from 'lucide-react';
 
 import { api } from '@/lib/api';
 
@@ -62,6 +61,7 @@ export function WhatsAppConnect({ onConnected }: Props) {
     return () => {
       if (interval) clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, onConnected]);
 
   if (status === 'loading') {
@@ -96,6 +96,7 @@ export function WhatsAppConnect({ onConnected }: Props) {
               <div className="rounded-xl bg-white p-4 shadow-sm border border-outline-variant">
                 {qrCode ? (
                   // Removing the data:image prefix if evolution go returns it, or adding it if it doesn't
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img 
                     src={qrCode.startsWith('data:image') ? qrCode : `data:image/png;base64,${qrCode}`} 
                     alt="WhatsApp QR Code" 

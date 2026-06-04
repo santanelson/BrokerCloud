@@ -22,7 +22,7 @@ export default function ChatPage() {
       try {
         const res = await api.get('/whatsapp/status');
         setIsConnected(res.state === 'connected');
-      } catch (err) {
+      } catch {
         setIsConnected(false);
       }
     };
@@ -225,6 +225,7 @@ export default function ChatPage() {
                         {/* Media Renderers */}
                         {msg.type === 'image' && msg.mediaUrl && (
                           <div className="mb-1 rounded-xl overflow-hidden cursor-pointer" onClick={() => window.open(msg.mediaUrl!, '_blank')}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={msg.mediaUrl} alt={msg.content} className="max-w-full max-h-64 object-cover" />
                           </div>
                         )}

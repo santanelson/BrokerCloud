@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn, formatCurrency } from '@/lib/utils'
-import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty } from '@/lib/hooks'
+import { useProperties, useCreateProperty, useDeleteProperty } from '@/lib/hooks'
 import { ImageUpload } from '@/components/ui/image-upload'
 import type { Property } from '@/types'
 
@@ -88,6 +88,7 @@ export default function ImoveisPage() {
               {/* Image placeholder */}
               <div className="relative aspect-video bg-surface-container-low border-b border-outline-variant flex items-center justify-center overflow-hidden">
                 {prop.images && prop.images.length > 0 ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={prop.images[0]} alt={prop.title} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                 ) : (
                   <span className="material-symbols-outlined text-4xl text-on-surface-variant/30">home_work</span>
@@ -199,6 +200,7 @@ function CreatePropertyModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-4 gap-3 mb-3">
               {(form.images || []).map((url, i) => (
                 <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-outline-variant group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={url} alt={`Preview ${i}`} className="w-full h-full object-cover" />
                   <button type="button" onClick={() => setForm({ ...form, images: form.images.filter((_, idx) => idx !== i) })}
                     className="absolute top-1 right-1 p-1 bg-black/60 rounded-md text-white opacity-0 group-hover:opacity-100 transition-opacity">

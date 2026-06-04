@@ -240,17 +240,6 @@ export function useSendMessage() {
         if (!old) return { data: [tempMessage], nextCursor: null }
         return {
           ...old,
-          data: [tempMessage, ...old.data] // Prepend since we sort desc or append? We reverse in frontend or backend?
-          // The backend returns order by sentAt: 'desc', but then reverses it? Let's check how it's handled.
-          // Wait, backend does `data: messages.reverse()`. So the frontend expects them in chronological order.
-        }
-      })
-
-      // Fix order: If backend returns chronological (oldest to newest), we append.
-      qc.setQueryData(['messages', vars.conversationId], (old: any) => {
-        if (!old) return { data: [tempMessage], nextCursor: null }
-        return {
-          ...old,
           data: [...old.data, tempMessage]
         }
       })

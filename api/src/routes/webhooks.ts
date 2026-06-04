@@ -3,6 +3,10 @@ import { prisma } from '../db/client'
 import { processWebhookMedia } from '../services/media'
 import { emitToTenant } from '../lib/socket'
 
+const MESSAGE_EVENTS = new Set(['Message', 'SendMessage', 'messages.upsert'])
+const RECEIPT_EVENTS = new Set(['Receipt'])
+const CONNECTION_EVENTS = new Set(['Connected', 'LoggedOut'])
+
 // Evolution Go Webhook — Receives WhatsApp events in real-time
 export async function webhookRoutes(app: FastifyInstance) {
   app.post('/evolution', {
@@ -17,11 +21,6 @@ export async function webhookRoutes(app: FastifyInstance) {
 
     app.log.debug({ event: payload.event, instanceId }, 'Evolution webhook received')
 
-    // DEBUG: Dump payload to a file to inspect its structure
-    try {
-      require('fs').appendFileSync('webhook_debug.log', JSON.stringify(payload, null, 2) + '\n\n');
-    } catch (e) {}
-
     try {
       const tenant = await prisma.tenant.findFirst({
         where: { whatsappInstanceId: instanceId, active: true },
@@ -32,25 +31,24 @@ export async function webhookRoutes(app: FastifyInstance) {
         return reply.code(200).send({ received: true })
       }
 
-      switch (payload.event) {
-        case 'Message':
-        case 'SendMessage':
-        case 'messages.upsert':
+      if (MESSAGE_EVENTS.has(payload.event)) {
+        if (isMessagePayload(payload)) {
           await handleMessageEvent(payload, tenant, app)
-          break
-        case 'Receipt':
+        } else {
+          app.log.debug({ event: payload.event }, 'Ignored non-message webhook payload')
+        }
+      } else if (RECEIPT_EVENTS.has(payload.event)) {
           await handleReceiptEvent(payload, tenant, app)
-          break
-        case 'Connected':
+      } else if (CONNECTION_EVENTS.has(payload.event)) {
+        if (payload.event === 'Connected') {
           app.log.info({ tenantId: tenant.id }, 'WhatsApp Connected')
           // TODO: emit socket connection status
-          break
-        case 'LoggedOut':
+        } else {
           app.log.info({ tenantId: tenant.id }, 'WhatsApp Logged Out')
           // TODO: emit socket connection status
-          break
-        default:
-          app.log.debug({ event: payload.event }, 'Unhandled Evolution event')
+        }
+      } else {
+        app.log.debug({ event: payload.event }, 'Unhandled Evolution event')
       }
     } catch (err) {
       app.log.error(err, 'Error processing Evolution webhook')
@@ -63,6 +61,21 @@ export async function webhookRoutes(app: FastifyInstance) {
 
 // In-memory cache para prevenir race conditions em webhooks simultâneos
 const processingMessages = new Set<string>()
+
+function isMessagePayload(body: any) {
+  const info = body.data?.Info
+  const key = body.data?.key || body.data?.message?.key
+  const msgData = body.data?.message || body.data?.Message
+  const remoteJid = key?.remoteJid || info?.Chat || info?.RemoteJid
+  const messageId = key?.id || info?.ID
+
+  if (!remoteJid || !messageId || !msgData) return false
+  if (remoteJid === 'status@broadcast') return false
+  if (remoteJid.endsWith('@g.us') || remoteJid.includes('@lid')) return false
+  if (msgData.protocolMessage || msgData.senderKeyDistributionMessage) return false
+
+  return true
+}
 
 function extractMessageData(body: any) {
   const key = body.data?.key || body.data?.message?.key

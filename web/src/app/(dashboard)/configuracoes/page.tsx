@@ -189,7 +189,7 @@ function WhatsAppSettings() {
     try {
       const data = await api.get('/whatsapp/status')
       setStatus(data.state)
-    } catch (err) {
+    } catch {
       setStatus('disconnected')
     }
   }

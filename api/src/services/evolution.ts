@@ -18,6 +18,7 @@ export interface InstanceConnect {
 const EVOLUTION_URL = process.env.EVOLUTION_API_URL
 const GLOBAL_API_KEY = process.env.EVOLUTION_API_KEY
 const API_PUBLIC_URL = process.env.API_PUBLIC_URL
+const WEBHOOK_SUBSCRIPTIONS = ['MESSAGE', 'SEND_MESSAGE', 'READ_RECEIPT', 'CONNECTION']
 
 export async function fetchWithEvolution(endpoint: string, options: RequestInit = {}): Promise<any> {
   const url = `${EVOLUTION_URL}${endpoint}`
@@ -108,7 +109,7 @@ export async function connectInstance(tenantId: string, instanceName: string): P
     },
     body: JSON.stringify({
       immediate: true,
-      subscribe: ['ALL'],
+      subscribe: WEBHOOK_SUBSCRIPTIONS,
       webhookUrl
     })
   }).catch((e) => {
