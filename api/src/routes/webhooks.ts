@@ -5,7 +5,7 @@ import { emitToTenant } from '../lib/socket'
 
 const MESSAGE_EVENTS = new Set(['Message', 'SendMessage', 'messages.upsert'])
 const RECEIPT_EVENTS = new Set(['Receipt'])
-const CONNECTION_EVENTS = new Set(['Connected', 'LoggedOut'])
+const CONNECTION_EVENTS = new Set(['Connected', 'LoggedOut', 'connection.update'])
 
 // Evolution Go Webhook — Receives WhatsApp events in real-time
 export async function webhookRoutes(app: FastifyInstance) {
@@ -14,9 +14,15 @@ export async function webhookRoutes(app: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const payload = request.body as any
 
-    const instanceId = payload?.instance || payload?.instanceId || payload?.data?.instance
+    const instanceId =
+      payload?.instanceName ||       // Evolution Go — campo correto
+      payload?.instance ||
+      payload?.instanceId ||
+      payload?.data?.instance ||
+      payload?.data?.instanceName
     if (!payload?.event || !instanceId) {
-      return reply.code(400).send({ error: 'INVALID_PAYLOAD' })
+      app.log.warn({ payload }, '[webhook] payload sem instanceId ou event')
+      return reply.code(200).send({ error: 'INVALID_PAYLOAD' })
     }
 
     app.log.debug({ event: payload.event, instanceId }, 'Evolution webhook received')
@@ -40,13 +46,9 @@ export async function webhookRoutes(app: FastifyInstance) {
       } else if (RECEIPT_EVENTS.has(payload.event)) {
           await handleReceiptEvent(payload, tenant, app)
       } else if (CONNECTION_EVENTS.has(payload.event)) {
-        if (payload.event === 'Connected') {
-          app.log.info({ tenantId: tenant.id }, 'WhatsApp Connected')
-          // TODO: emit socket connection status
-        } else {
-          app.log.info({ tenantId: tenant.id }, 'WhatsApp Logged Out')
-          // TODO: emit socket connection status
-        }
+        const connected = payload.event === 'Connected' || payload.data?.state === 'open'
+        app.log.info({ tenantId: tenant.id, connected }, `WhatsApp connection event: ${payload.event}`)
+        emitToTenant(tenant.id, 'whatsapp:status', { connected })
       } else {
         app.log.debug({ event: payload.event }, 'Unhandled Evolution event')
       }
@@ -59,8 +61,7 @@ export async function webhookRoutes(app: FastifyInstance) {
   })
 }
 
-// In-memory cache para prevenir race conditions em webhooks simultâneos
-const processingMessages = new Set<string>()
+// Dedup is handled atomically via prisma.message.upsert with @unique evolutionMessageId
 
 function isMessagePayload(body: any) {
   const info = body.data?.Info
@@ -118,43 +119,26 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
   if (!remoteJid || !evolutionMessageId) return
   if (remoteJid.endsWith('@g.us') || remoteJid.includes('@lid')) return
 
-  // Proteção contra Race Conditions (Webhooks simultâneos do mesmo evento)
-  if (processingMessages.has(evolutionMessageId)) return
-  processingMessages.add(evolutionMessageId)
-  
-  // Limpa o cache após 10 segundos
-  setTimeout(() => {
-    processingMessages.delete(evolutionMessageId)
-  }, 10000)
-
-  // Dedup: check se já salvamos essa mensagem no banco
-  const existing = await prisma.message.findFirst({
-    where: { evolutionMessageId }
-  })
-  if (existing) return
-
   const timestamp = payload.data?.messageTimestamp 
     ? new Date(payload.data.messageTimestamp * 1000) 
     : (payload.data?.Info?.Timestamp ? new Date(payload.data.Info.Timestamp * 1000) : new Date())
 
-  let conversation = await prisma.conversation.findUnique({
-    where: { tenantId_whatsappJid: { tenantId: tenant.id, whatsappJid: remoteJid } },
+  // Busca lead para vincular à conversa (caso ainda não exista)
+  const phone = remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
+  const lead = await prisma.lead.findFirst({
+    where: { tenantId: tenant.id, phone: { contains: phone.slice(-9) } },
   })
 
-  if (!conversation) {
-    const phone = remoteJid.replace('@s.whatsapp.net', '').replace(/\D/g, '')
-    const lead = await prisma.lead.findFirst({
-      where: { tenantId: tenant.id, phone: { contains: phone.slice(-9) } },
-    })
-
-    conversation = await prisma.conversation.create({
-      data: {
-        tenantId: tenant.id,
-        whatsappJid: remoteJid,
-        leadId: lead?.id ?? null,
-      },
-    })
-  }
+  // Upsert atômico — elimina race condition entre webhooks simultâneos do mesmo JID
+  const conversation = await prisma.conversation.upsert({
+    where: { tenantId_whatsappJid: { tenantId: tenant.id, whatsappJid: remoteJid } },
+    create: {
+      tenantId: tenant.id,
+      whatsappJid: remoteJid,
+      leadId: lead?.id ?? null,
+    },
+    update: {}, // já existe — não altera nada
+  })
 
   // Determine direction
   const direction = isFromMe ? 'out' : 'in'
@@ -203,8 +187,10 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
     }
   }
 
-  const message = await prisma.message.create({
-    data: {
+  // Upsert atômico por evolutionMessageId — dedup funciona com múltiplos workers
+  const message = await prisma.message.upsert({
+    where: { evolutionMessageId },
+    create: {
       conversationId: conversation.id,
       evolutionMessageId,
       direction,
@@ -216,6 +202,7 @@ async function handleMessageEvent(payload: any, tenant: any, app: FastifyInstanc
       status: direction === 'out' ? 'sent' : 'delivered',
       sentAt: timestamp,
     },
+    update: {}, // já existe — ignora silenciosamente
   })
 
   // Update conversation

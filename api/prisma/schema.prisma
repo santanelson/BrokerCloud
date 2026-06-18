@@ -112,6 +112,7 @@ model Tenant {
   evolutionApiKey       String?
   whatsappInstanceId    String?
   whatsappInstanceToken String?
+  whatsappInstanceName  String?
   active                Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -290,7 +291,7 @@ model Conversation {
 model Message {
   id                 String           @id @default(cuid())
   conversationId     String
-  evolutionMessageId String?
+  evolutionMessageId String?    @unique
   direction          MessageDirection
   type               MessageType      @default(text)
   content            String

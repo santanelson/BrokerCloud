@@ -25,7 +25,7 @@ export async function generatePresignedUploadUrl(
   throw new Error('Not implemented for Supabase yet')
 }
 
-export async function uploadFileToR2(
+export async function uploadFileToSupabaseStorage(
   fileBuffer: Buffer,
   fileName: string,
   contentType: string

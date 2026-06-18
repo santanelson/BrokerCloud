@@ -6,6 +6,11 @@
     "dev": "npx concurrently \"npm run dev --prefix api\" \"npm run dev --prefix web\"",
     "install:all": "npm install && npm install --prefix api && npm install --prefix web",
     "deploy": "node deploy.js",
+    "nginx:print": "node nginx.js --print",
+    "nginx:list": "node nginx.js --list-managed",
+    "nginx:dry-run": "node nginx.js --install --dry-run",
+    "nginx:cleanup": "node nginx.js --cleanup-managed",
+    "nginx:install": "node nginx.js --install",
     "evolution:setup": "node install-evolution.js --setup",
     "evolution:check": "node install-evolution.js --check",
     "evolution:deploy": "node install-evolution.js"

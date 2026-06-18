@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '../stores/auth-store'
 import { api } from '../api'
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null)
+  const [socket, setSocket] = useState<Socket | null>(null)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   
   useEffect(() => {
@@ -14,26 +15,32 @@ export function useSocket() {
 
     const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
     
-    const socket = io(url, {
+    const newSocket = io(url, {
       auth: { token },
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     })
 
-    socket.on('connect', () => {
+    newSocket.on('connect', () => {
       console.log('Connected to real-time chat server')
+      setSocket(newSocket) // dispara re-render com o socket real
     })
 
-    socket.on('disconnect', () => {
+    newSocket.on('disconnect', () => {
       console.log('Disconnected from real-time chat server')
+      setSocket(null)
     })
 
-    socketRef.current = socket
+    socketRef.current = newSocket
 
     return () => {
-      socket.disconnect()
+      newSocket.disconnect()
       socketRef.current = null
+      setSocket(null)
     }
   }, [isAuthenticated])
 
-  return socketRef.current
+  return socket // agora reativo — força re-render quando conectar
 }

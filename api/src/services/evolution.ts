@@ -83,7 +83,8 @@ export async function createInstance(tenantId: string, instanceName: string) {
       where: { id: tenantId },
       data: {
         whatsappInstanceId: response.data.id,
-        whatsappInstanceToken: response.data.token || token
+        whatsappInstanceToken: response.data.token || token,
+        whatsappInstanceName: instanceName, // salvar o nome real da instância
       }
     })
   }
@@ -97,6 +98,9 @@ export async function connectInstance(tenantId: string, instanceName: string): P
   if (!tenant?.whatsappInstanceId || !tenant?.whatsappInstanceToken) {
     throw new Error("Instance not found in database")
   }
+
+  // Usar o instanceName salvo no banco (o real), não o parâmetro passado como fallback
+  const savedInstanceName = tenant.whatsappInstanceName || instanceName
 
   const webhookUrl = `${API_PUBLIC_URL}/webhooks/evolution`
 
@@ -128,7 +132,7 @@ export async function connectInstance(tenantId: string, instanceName: string): P
 
     if (qrResponse.data && qrResponse.data.Qrcode) {
       return {
-        instance: { instanceName, state: 'connecting' },
+        instance: { instanceName: savedInstanceName, state: 'connecting' },
         base64: qrResponse.data.Qrcode
       }
     }
@@ -137,7 +141,7 @@ export async function connectInstance(tenantId: string, instanceName: string): P
   }
 
   return {
-    instance: { instanceName, state: 'disconnected' }
+    instance: { instanceName: savedInstanceName, state: 'disconnected' }
   }
 }
 

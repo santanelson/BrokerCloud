@@ -34,11 +34,8 @@ const requiredApiEnv = [
   'FRONTEND_URL',
   'JWT_SECRET',
   'JWT_REFRESH_SECRET',
-  'R2_ACCOUNT_ID',
-  'R2_ACCESS_KEY_ID',
-  'R2_SECRET_ACCESS_KEY',
-  'R2_BUCKET_NAME',
-  'R2_PUBLIC_URL',
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
   'EVOLUTION_API_URL',
   'EVOLUTION_API_KEY',
 ]
@@ -207,12 +204,7 @@ async function setupEnv() {
 
     const supabaseUrl = await askRequired(rl, 'NEXT_PUBLIC_SUPABASE_URL', existingRoot.NEXT_PUBLIC_SUPABASE_URL || 'https://seu-projeto.supabase.co')
     const supabaseAnonKey = await askRequired(rl, 'NEXT_PUBLIC_SUPABASE_ANON_KEY', existingRoot.NEXT_PUBLIC_SUPABASE_ANON_KEY || '')
-
-    const r2AccountId = await askRequired(rl, 'R2_ACCOUNT_ID', existingApi.R2_ACCOUNT_ID || '')
-    const r2AccessKey = await askRequired(rl, 'R2_ACCESS_KEY_ID', existingApi.R2_ACCESS_KEY_ID || '')
-    const r2SecretKey = await askRequired(rl, 'R2_SECRET_ACCESS_KEY', existingApi.R2_SECRET_ACCESS_KEY || '')
-    const r2Bucket = await askRequired(rl, 'R2_BUCKET_NAME', existingApi.R2_BUCKET_NAME || 'broker')
-    const r2PublicUrl = await askRequired(rl, 'R2_PUBLIC_URL', existingApi.R2_PUBLIC_URL || 'https://cdn.seudominio.com.br')
+    const supabaseServiceRoleKey = await askRequired(rl, 'SUPABASE_SERVICE_ROLE_KEY', existingApi.SUPABASE_SERVICE_ROLE_KEY || '')
 
     const evolutionUrl = await askRequired(rl, 'EVOLUTION_API_URL', existingApi.EVOLUTION_API_URL || 'https://zap.seudominio.com.br')
     const evolutionKey = await askRequired(rl, 'EVOLUTION_API_KEY', existingApi.EVOLUTION_API_KEY || '')
@@ -244,11 +236,8 @@ async function setupEnv() {
       JWT_REFRESH_SECRET: jwtRefreshSecret,
       JWT_REFRESH_EXPIRES_IN: existingApi.JWT_REFRESH_EXPIRES_IN || '7d',
       REDIS_URL: 'redis://redis:6379',
-      R2_ACCOUNT_ID: r2AccountId,
-      R2_ACCESS_KEY_ID: r2AccessKey,
-      R2_SECRET_ACCESS_KEY: r2SecretKey,
-      R2_BUCKET_NAME: r2Bucket,
-      R2_PUBLIC_URL: r2PublicUrl,
+      SUPABASE_URL: existingApi.SUPABASE_URL || supabaseUrl,
+      SUPABASE_SERVICE_ROLE_KEY: supabaseServiceRoleKey,
       EVOLUTION_API_URL: evolutionUrl,
       EVOLUTION_API_KEY: evolutionKey,
       API_PUBLIC_URL: apiUrl,
@@ -265,7 +254,7 @@ async function setupEnv() {
       { title: 'Server', values: pick(apiValues, ['NODE_ENV', 'PORT', 'HOST', 'API_PUBLIC_URL', 'FRONTEND_URL']) },
       { title: 'Database e Redis dentro do Docker', values: pick(apiValues, ['DATABASE_URL', 'REDIS_URL']) },
       { title: 'Auth', values: pick(apiValues, ['JWT_SECRET', 'JWT_EXPIRES_IN', 'JWT_REFRESH_SECRET', 'JWT_REFRESH_EXPIRES_IN']) },
-      { title: 'Cloudflare R2', values: pick(apiValues, ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL']) },
+      { title: 'Supabase Storage', values: pick(apiValues, ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) },
       { title: 'Evolution Go API', values: pick(apiValues, ['EVOLUTION_API_URL', 'EVOLUTION_API_KEY']) },
     ])
 

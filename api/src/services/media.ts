@@ -1,4 +1,4 @@
-import { uploadFileToR2 } from '../lib/storage'
+import { uploadFileToSupabaseStorage } from '../lib/storage'
 import { randomUUID } from 'crypto'
 
 export interface MediaResult {
@@ -65,7 +65,7 @@ export async function processWebhookMedia(
   const fileName = `chat-media/${tenantId}/${conversationId}/${messageId || randomUUID()}.${ext}`
 
   try {
-    const mediaUrl = await uploadFileToR2(buffer, fileName, mimetype)
+    const mediaUrl = await uploadFileToSupabaseStorage(buffer, fileName, mimetype)
     return {
       mediaUrl,
       mediaMimetype: mimetype,
