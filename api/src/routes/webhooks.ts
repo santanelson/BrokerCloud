@@ -29,7 +29,13 @@ export async function webhookRoutes(app: FastifyInstance) {
 
     try {
       const tenant = await prisma.tenant.findFirst({
-        where: { whatsappInstanceId: instanceId, active: true },
+        where: { 
+          OR: [
+            { whatsappInstanceId: instanceId },
+            { whatsappInstanceName: instanceId }
+          ],
+          active: true 
+        },
       })
 
       if (!tenant) {
